@@ -1,7 +1,7 @@
 # ADPIO EDGE - IOT AND WEB-BASED AUTOMATION PLATFORM
 Modern IOT and fully WEB-based platform. 
 
-## [WEBSITE: ADPIO EDGE](http://adpioedge.com)
+## [PROJECT'S WEBSITE: ADPIO EDGE](https://adpioedge.com)
 
 
 Build around main fundamentals: 
