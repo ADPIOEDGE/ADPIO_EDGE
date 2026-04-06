@@ -4,7 +4,7 @@ Modern IOT and fully WEB-based platform.
 ## [WEBSITE: ADPIO EDGE](http://adpioedge.com)
 
 
-Build around 3 main fundamentals: 
+Build around main fundamentals: 
 1. Datapoint agregation and integration
 2. Flow based programming
 3. GUI builder.
