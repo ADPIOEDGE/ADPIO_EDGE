@@ -20,6 +20,7 @@ Dependencies for Python:
   fastapi
   ujson
   pony
+  bacpypes3
   psutil #cpu and mem info
 ```
 
