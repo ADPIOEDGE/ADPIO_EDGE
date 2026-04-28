@@ -39,6 +39,8 @@ class bacnet_server():
         self.CMDS_DICT = {
             'who_is'                 : self.who_is,                 #low_limit = 0, high_limit = 4194303
             'clear_db'               : self.clear_db,             
+            'sleep_bacnet'           : self.sleep_bacnet,
+
             'read_property'          : self.read_property,   
             'read_property_multi'    : self.read_property_multi, 
             'read_device_list'       : self.read_device_list,       #Register in db
@@ -73,11 +75,8 @@ class bacnet_server():
     async def run_service(self, settings):
         #TEST av
         #av = AnalogValueObject(
-        #    objectIdentifier=("analogValue", 0),
-        #    objectName="Test AV",
-        #    presentValue=-1,
-        #    covIncrement=0.5,
-        #)
+        #    objectIdentifier=("analogValue", 0),  objectName="Test AV",
+        #    presentValue=-1,  covIncrement=0.5,)
        
         await print_log_bacnet(f"BACnet Service Started: {settings[1]["mac-address"]}, {settings[0]["object-identifier"]}")
 
@@ -89,10 +88,17 @@ class bacnet_server():
 
         self.status = True
         
-        if self.who_is_onstart: await self.add_task('who_is', {})
+        if self.who_is_onstart: 
+            await self.add_tasks([
+                {'cmd': 'sleep_bacnet', 'params': { 'time': 3 }}, #delay who is on startup
+                {'cmd': 'who_is',       'params': {}}
+            ])
 
         while self.status:  #BACnet task manager Loop
             try: 
+            #Sync Values with app
+                await self.app_sync() 
+
                 if (len(self.tasks) > 0):
                     if self.debug:
                         print("BACnet: Tasks Left: ",  len(self.tasks), '\n')
@@ -121,9 +127,6 @@ class bacnet_server():
                             self.tasks.append(tsk)
                         else:
                             if self.debug: print(f"New Task Rejected, Already exists")
-
-            #Sync Values with app
-            await self.app_sync() 
 
             await asyncio.sleep(self.task_mng_sleep) 
 
@@ -161,8 +164,10 @@ class bacnet_server():
                                     })
 
                                     bnd['old_value'] = value
+                                    property['online'] = True
                                     await set_mem_value(bnd['app'], bnd['memalloc'], bnd['datatype'], str(value) )
                                 except Exception as ex: 
+                                    property['online'] = False
                                     error = f"Error, BACnet Read Error! {ex}\n : {device['net']}: {object['object']} - {property['property']} = {str(value)} \n "
                                     await print_log_bacnet(error)
 
@@ -179,6 +184,7 @@ class bacnet_server():
                                             'value'   : str(value),
                                             'priority': bnd['write_prio'],
                                         })
+                                        property['online'] = True
                                 except Exception as ex: 
                                     error = f"Error, BACnet Write Error! {ex}\n : {device['net']}: {object['object']} - {property['property']} = {str(value)} \n "
                                     await print_log_bacnet(error)
@@ -192,6 +198,10 @@ class bacnet_server():
 
     async def add_tasks(self, cmds):
         self.tasks.extend(cmds) #add list [{cmd, params}, ...]
+
+
+    async def sleep_bacnet (self, cmds):
+        await asyncio.sleep(cmds['time'])
 
 
     async def who_is(self, params): #//low_limit = 0, high_limit = 4194303
@@ -267,11 +277,21 @@ class bacnet_server():
                     "segment_rx"    : segment_rx,
                     "segment_tx"    : segment_tx,
                     "list_size"     : list_size,
+                    "obj_list_read" : False,
                     "objects"       : [],
                 })
 
                 if self.debug:
-                    print(f"New Device Added! : {device_instance} - {device_address}")     
+                    print(f"New Device Added! : {device_instance} - {device_address}")
+            else:
+                device["device_id"]   = device_instance
+                device["name"]        = name
+                device["description"] = description
+                device["location"]    = location
+                device["segment_rx"]  = segment_rx
+                device["segment_tx"]  = segment_tx
+                device["list_size"]   = list_size
+                
 
         set_devices(devices)
 
@@ -318,6 +338,10 @@ class bacnet_server():
 
         devices = get_devices()        
         device  = devices[params['id']]
+
+        if device['obj_list_read'] == False:
+            device['obj_list_read'] = True
+            set_devices(devices)
 
         if device["net"] != params["net"]:
             print_log_bacnet(f"MSG Dismissed: mismatch id vs device net {device["net"]} !== {params["net"]}")
@@ -483,6 +507,7 @@ async def add_app_BACnet_sync(app, datapoints):
                     "segment_rx"    : "",
                     "segment_tx"    : "",
                     "list_size"     : 0,
+                    "obj_list_read" : False,
                     "objects"       : []
                 })
 

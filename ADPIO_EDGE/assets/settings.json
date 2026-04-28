@@ -12,7 +12,7 @@
     "lorawan_server": {
         "net_autostart": false,
         "port"         : 9002,
-        "alloc_size"   : 100,
+        "alloc_size"   : 250,
         "debug"        : false,
 
         "listen"       : 1,
@@ -22,7 +22,7 @@
     "bacnet_server": {
         "net_autostart"  : false,
         "whois_autostart": true,
-        "alloc_size"     : 1000,
+        "alloc_size"     : 2000,
         "task_mng_sleep" : 0.1,
 
         "bip_ip"         : "192.168.1.162",

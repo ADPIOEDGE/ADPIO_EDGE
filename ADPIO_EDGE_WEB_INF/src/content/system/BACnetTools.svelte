@@ -126,14 +126,14 @@
                 onclick             : async (e: any) => { await bacnet_command([{ 'cmd': 'who_is', 'params': {} }]) }
             },
 
-            {
+            /*{
                 text                : 'Clear All Devices',
                 color               : 'red',
                 icon                : TrashCan,
                 disabled            : false,
 
                 onclick             : async (e: any) => { await bacnet_command([{ 'cmd': 'clear_db', 'params': {} }])  }
-            },
+            },*/
         ]
 
         device_buttons = [
@@ -301,14 +301,14 @@
         data.data.forEach((el: any) => {
             el.panel = []
             
-            if (el.objects.length === 0)                 { el.panel.push({ icon: DataError,  color: "grey",   text: `Object List Not Read. Size: ${el.list_size}`}    ) } 
-            else if (el.list_size === el.objects.length) { el.panel.push({ icon: DataView,   color: "green",  text: `Object List Read. Size: ${el.objects.length}`}   ) }
-            else                                         { el.panel.push({ icon: DataBackup, color: "orange", text: `Progress: ${el.objects.length}/${el.list_size}`} ) } 
+            if (!el.obj_list_read)                       { el.panel.push({ icon: DataError,       color: "grey",   text: `Object List Not Read. Size: ${el.list_size}`}    ) } 
+            else if (el.list_size === el.objects.length) { el.panel.push({ icon: DataView,        color: "green",  text: `Object List Read. Size: ${el.objects.length}`}   ) }
+            else                                         { el.panel.push({ icon: DataBackup,      color: "orange", text: `Progress: ${el.objects.length}/${el.list_size}`} ) } 
 
-            if ((el.segment_rx) && (el.segment_tx)) { el.panel.push({ icon: ArrowsVertical,  color: "green", text: 'Segmentation TX and RX'}) } 
-            else if (el.segment_tx)                 { el.panel.push({ icon: ArrowUp,         color: "green", text: 'Segmentation TX'}) } 
-            else if (el.segment_rx)                 { el.panel.push({ icon: ArrowDown,       color: "green", text: 'Segmentation RX'}) } 
-            else                                    { el.panel.push({ icon: ArrowsVertical,  color: "grey",  text: 'No Segmentation'}) }
+            if ((el.segment_rx) && (el.segment_tx))      { el.panel.push({ icon: ArrowsVertical,  color: "green",  text: 'Segmentation TX and RX'}) } 
+            else if (el.segment_tx)                      { el.panel.push({ icon: ArrowUp,         color: "green",  text: 'Segmentation TX'}) } 
+            else if (el.segment_rx)                      { el.panel.push({ icon: ArrowDown,       color: "green",  text: 'Segmentation RX'}) } 
+            else                                         { el.panel.push({ icon: ArrowsVertical,  color: "grey",   text: 'No Segmentation'}) }
         
             if ((selected_device !== undefined) && (selected_device.net === el.net)) {
                 dev_data.data = el.objects //Update Selected Device

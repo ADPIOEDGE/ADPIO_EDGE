@@ -48,7 +48,7 @@
     let buttons:any = []
 
     function update_buttons(){
-        let btns = [
+        let btns: any = [
             {
                 text                : 'BACK',
                 color               : 'normal',
@@ -61,7 +61,6 @@
                     set_navigation('APP EDITOR', '/app_ide/mng') 
                 }
             },
-
 
     /* Navigation */
             {
@@ -98,9 +97,8 @@
                     view = VIEW_PROG
                     buttons = update_buttons()            
                 }
-            },                   
-
-    /* App Start Stop */
+            },
+                    
             {
                 text                : 'BUILD APP',
                 color               : 'normal',
@@ -111,26 +109,10 @@
                     await build_app(application.name) 
                     popup_add("Command Finished", "App Build Command Finished")
                 }
-            },
+            }]
 
-            {
-                text                : 'RUN APP',
-                color               : 'green',
-                icon                : BuildRun,
-                disabled            : false,
-                rendered            : !application.status,
-
-                onclick             : async (e: any) => { 
-                    popup_add("Executing Run Command", "Wait Command to Complete")
-                    await run_app   (application.name) 
-                    await sleep(1200);
-                    application = await update_app(application.name)
-                    buttons     = update_buttons()
-                    popup_add("Command Finished", "App Run Command Finished")
-                }
-            }, 
-
-            {
+        if ( application.status ) 
+            btns.push({
                 text                : 'STOP APP',
                 color               : 'red',
                 icon                : StopOutline,
@@ -145,9 +127,26 @@
                     buttons     = update_buttons()
                     popup_add("Command Finished", "App Stop Command Finished")
                 }
-            },  
+            }) 
+        else
+            btns.push({
+                text                : 'RUN APP',
+                color               : 'green',
+                icon                : BuildRun,
+                disabled            : false,
+                rendered            : !application.status,
 
-            {
+                onclick             : async (e: any) => { 
+                    popup_add("Executing Run Command", "Wait Command to Complete")
+                    await run_app   (application.name) 
+                    await sleep(1200);
+                    application = await update_app(application.name)
+                    buttons     = update_buttons()
+                    popup_add("Command Finished", "App Run Command Finished")
+                }
+            }) 
+
+        btns.push({
                 text                : 'APP TERMINAL',
                 color               : 'normal',
                 icon                : Terminal,
@@ -157,8 +156,8 @@
                 onclick             : async (e: any) => { 
                     await terminal_modal.open(e)
                 }
-            }            
-        ]
+        })
+        
 
         return btns
     }
@@ -189,7 +188,7 @@
 
 
 <div class="content-panel" >
-    <ControlPanel buttons={buttons} />
+    <ControlPanel buttons={buttons} hotkeys />
 </div>
 
 {#if application === undefined}
