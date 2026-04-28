@@ -3,6 +3,7 @@ LOCAL="${0%/*}/ADPIO_EDGE"
 DEBUG=${1:-"release"} # release, debug
 VERSION=${2:-"0.0"}
 
+
 echo $LOCAL
 echo "Mode: "$DEBUG
 
