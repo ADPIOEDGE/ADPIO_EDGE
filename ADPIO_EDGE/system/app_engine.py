@@ -13,6 +13,7 @@ from content.app_ide_logic      import load_blocks, save_bind_alloc
 from assets.dataconversion      import set_mem_value, get_mem, get_binds
 
 from drivers.loraWAN_conn_sever import add_app_loraWAN_sync, free_app_loraWAN_sync
+from drivers.bacnet_server      import add_app_BACnet_sync, free_app_BACnet_sync
 
 
 from content.logger import print_app_event
@@ -31,7 +32,7 @@ async def build_app(app):
     APP_SRC  = f'{ROOT_FOLDER}/assets/app_main_src.py' #do not confuse with assets in workfolder
     APP_EXE  = f'{APPS_FOLDER}/{app}/app_main.py'
 
-    print(f'******** Building {app} ... *******')  
+    print(f'>>>> Building {app} <<<<')  
 
     datapoints      = load_datapoints(app)
     datapoints      = save_mem_alloc(app, datapoints) #Allocate Memory
@@ -67,7 +68,7 @@ async def build_app(app):
 #graphics
     reorder_graphics(app)
 
-    print(f'******** {app} Compiled! *******')  
+    print(f'>>>> {app} Done <<<<')  
     print(' ')
 
 #***** Build Header *****
@@ -96,16 +97,16 @@ def build_datapoints(src_code, datapoints):
     for dp in datapoints:         
         match dp['datatype']: #this one used only to set allocation
             case "bool":
-                inject_code_mem += f'            {False}, #{dp['name']} [{dp['memalloc']}] - bool\n'
+                inject_code_mem += f'            {False}, #{dp['group']}: {dp['name']} [{dp['memalloc']}] - bool\n'
             case "int":
-                inject_code_mem += f'            {10},    #{dp['name']} [{dp['memalloc']}] - int\n'
+                inject_code_mem += f'            {10},    #{dp['group']}: {dp['name']} [{dp['memalloc']}] - int\n'
             case "float":
-                inject_code_mem += f'            {0.1},   #{dp['name']} [{dp['memalloc']}] - float\n'
+                inject_code_mem += f'            {0.1},   #{dp['group']}: {dp['name']} [{dp['memalloc']}] - float\n'
             case "str":
-                inject_code_mem += f'            "{'PLACEHOLDER'}",     #{dp['name']} [{dp['memalloc']}] - str\n'  #Need length to setup correctly
+                inject_code_mem += f'            "{'PLACEHOLDER'}",     #{dp['group']}: {dp['name']} [{dp['memalloc']}] - str\n'  #Need length to setup correctly
             case _: 
                 print(f'Unknown Data Type  {dp['datatype']}')
-                inject_code_mem += f'            {None},    #{dp['name']} [{dp['memalloc']}] - {dp['datatype']}\n'  #Need length to setup correctly
+                inject_code_mem += f'            {None},    #{dp['group']}: {dp['name']} [{dp['memalloc']}] - {dp['datatype']}\n'  #Need length to setup correctly
             
         
     src_code = src_code.replace('            #<DATAPOINTS_DEF/>',   inject_code_mem) #Make Shared Mem List
@@ -120,8 +121,8 @@ def build_gets(src_code, datapoints, g_list, cons_list, b_list):
         bnd = find_bind(b_list, g_rec['id'], 0)
 
         for dp in datapoints:
-            if dp['name'] == g_rec['name']:
-                inject_code += f'            bind_mem[{bnd['mem']}] = shared_mem[{dp['memalloc']}] #{dp['name']}\n'
+            if f'{dp['group']}:{dp['name']}' == f'{g_rec['name']}':
+                inject_code += f'            bind_mem[{bnd['mem']}] = shared_mem[{dp['memalloc']}] #{dp['group']}: {dp['name']}\n'
 
     for c_rec in cons_list:
         bnd = find_bind(b_list, c_rec['id'], 0)
@@ -136,9 +137,10 @@ def build_sets(src_code, datapoints, s_list, b_list):
 
     for s_rec in s_list:
         for dp in datapoints:
-            if dp['name'] == s_rec['name']:
+            if f'{dp['group']}:{dp['name']}' == f'{s_rec['name']}':
+
                 bnd = find_bind(b_list, s_rec['io'][0]['bind']['bind_id'], s_rec['io'][0]['bind']['bind_io_index'])
-                inject_code += f'            shared_mem[{dp['memalloc']}] = bind_mem[{bnd['mem']}] #{dp['name']} = {bnd['name']}\n'
+                inject_code += f'            shared_mem[{dp['memalloc']}] = bind_mem[{bnd['mem']}] #{dp['group']}: {dp['name']} = {bnd['name']}\n'
 
     src_code = src_code.replace('            #<SETTERS_CODE/>',          inject_code) #Define Defaults    
     return src_code  
@@ -281,7 +283,7 @@ def add_bind(bind_list, io_rec):
         "mem": 0 
     } 
     for rec in bind_list: #check for repeats
-        if rec['name'] == new_rec['name']:
+        if f'{rec['name']}' == f'{new_rec['name']}':
             return bind_list
 
     bind_list.append( new_rec ) #blk                        
@@ -292,6 +294,8 @@ def add_bind(bind_list, io_rec):
 #***** Manage APP *****
 async def run_app(app):
     global PYTHON_SYS
+
+    print(f'>>>> Launching {app} <<<<')
 
     if PYTHON_SYS == "":
         init_settings()
@@ -321,13 +325,17 @@ async def run_app(app):
 
 
     #Register DP Mapping in drivers
-    #loraWAN
     dp = load_datapoints(app)
-    bind_count = add_app_loraWAN_sync(app, dp)
-    print(f'LoRaWAN Bindings Binded: {bind_count}')
 
-    #print( "APP {}[{}] Started: {}".format( app['name'], app['id'], str(sub_proc) ) )
-    print('***** DONE!!! *****')
+    #loraWAN
+    bind_count = add_app_loraWAN_sync(app, dp)
+    print(f'LoRaWAN Data Binded: {bind_count}')
+
+    #BACnet
+    bind_count = await add_app_BACnet_sync(app, dp)
+    print(f'BACnet Data Binded: {bind_count}')
+
+    print(f'>>>> {app} Ready <<<<')
 
     return { 'result': 'ok', }
     
@@ -343,17 +351,20 @@ async def get_app_status(app): # try: i do not know why, but try catch should be
 
 
 async def stop_app(app):
-    print(f'Terminating {app} .... ')
+    print(f'>>>> Terminating {app} <<<< ')
 
     bind_count = free_app_loraWAN_sync(app)
     print(f'LoRaWAN Bindings Cleared: {bind_count}')
+
+    bind_count = free_app_BACnet_sync(app)
+    print(f'BACnet Bindings Cleared: {bind_count}')
 
     mem_name = f'{app}_sharedmem'
     shared_mem_list    = ShareableList(name=mem_name)
     shared_mem_list[0] = False #App Status Flag
     shared_mem_list.shm.close()
     
-    await print_app_event(f'{app} Stopped.')
+    await print_app_event(f'>>>> {app} Stopped <<<<')
 
 
 async def get_app_mem(app): # try: i do not know why, but try catch should be done outside this function, otherwise it does not work... WTF?

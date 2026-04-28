@@ -98,6 +98,14 @@ async def get_mem(app): # try: i do not know why, but try catch should be done o
 
     return res
 
+async def get_mem_value(app, memalloc): # try: i do not know why, but try catch should be done outside this function, otherwise it does not work... WTF?
+    shared_mem_list = ShareableList(name=f'{app}_sharedmem')     
+    value = shared_mem_list[memalloc]
+    shared_mem_list.shm.close()
+
+    return value
+
+
 
 async def set_mem_value(app, memalloc, datatype, value):
     shared_mem_list = ShareableList(name=f'{app}_sharedmem') 

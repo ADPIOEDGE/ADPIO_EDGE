@@ -49,8 +49,8 @@ def app_graph_rec(db):
 
         'order'           : Optional ( float,     default = 0                            ),
 
-        'name'            : Required ( str, 32,   default = 'widget',                    ),
-        'description'     : Optional ( str, 64,   default = 'description'                ),
+        #'name'            : Required ( str, 32,   default = 'widget',                    ),
+        #'description'     : Optional ( str, 64,   default = 'description'                ),
         
         'view'            : Optional  ( str, 32,   default = 'Dashboard'                 ),
 

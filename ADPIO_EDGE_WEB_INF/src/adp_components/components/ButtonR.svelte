@@ -21,19 +21,22 @@
   let modal_view: boolean = false
   let hover     : boolean = false
   
+  export function open_conf(){ modal_view = true }
 </script>
 
 {#if rendered }
-  <button class="round-btn round-btn-{disabled ? 'disabled': color}" onclick={(e: any) => { 
-    if (!disabled){
-      if (with_confirmation) {
-        modal_view = true
-      } else {
-        onclick(e)
+  <button class="round-btn round-btn-{disabled ? 'disabled': color}" 
+    onclick={(e: any) => { 
+      if (!disabled){
+        if (with_confirmation) {
+          modal_view = true
+        } else {
+          onclick(e)
+        }
       }
-    }
-  }} 
-      onmouseenter="{() => {hover = true}}" onmouseleave="{() => {hover = false}}"   
+    }} 
+
+    onmouseenter="{() => {hover = true}}" onmouseleave="{() => {hover = false}}"   
   >
     {#if text !== ""}
       <Tooltip text="{text}" show={hover} x="-15px" y="-50px" />
@@ -65,5 +68,6 @@
 
       transition: all 0.25s;    
   }
+
 
 </style>

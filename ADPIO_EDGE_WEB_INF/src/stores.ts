@@ -67,7 +67,7 @@ export function init_browser_params(){
   user_params.set(brwsr)
 }
 
-export function on_browser_resize(outerWidth: number, innerWidth: number, outerHeight:number, innerHeight:number){
+export function set_browser_resize(outerWidth: number, innerWidth: number, outerHeight:number, innerHeight:number){
   let brwsr = get(browser_params)
 
   brwsr.outerWidth  = outerWidth
@@ -259,10 +259,11 @@ export function datapoint_tree(data_db: any, groups_db: any){
           new_grp.submenu.push( {
               id: `datapoint_${el_d.id}`, name: el_d.name,
               visible: true, draggable: true, 
-              
-                type    : 'datapoint', 
-                el_name : el_d.name,
-                el_id   : el_d.id //Datapoint Specific
+
+              type    : 'datapoint', 
+              el_name : el_d.name,
+              el_group: el_d.group,
+              el_id   : el_d.id //Datapoint Specific
             } )
     })
 

@@ -111,7 +111,7 @@ async def add_element(db, content):
         elif content['element']['type'] == 'datapoint':
             with db_session: 
                 db.logic(
-                    name            = content['element']['name'],
+                    name            = f"{content['element']['group']}:{content['element']['name']}",
                     type            = 'datapoint-get',
                     function        = '',
                     libimport       = '',

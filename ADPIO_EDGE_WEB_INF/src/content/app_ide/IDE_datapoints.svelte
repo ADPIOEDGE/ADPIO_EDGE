@@ -168,8 +168,8 @@
             }},
 
 
-//Lora Integration
-            { type: 'LoraWANEdit'  , group: "NET", label: "LoRaWAN", bind_name: "protocol", visible: true, args: {
+//Protocol Integration
+            { type: 'ProtocolEdit'  , group: "NET", label: "Integration", bind_name: "protocol", visible: true, args: {
                 readonly: false
             }},   
         ]
@@ -201,8 +201,16 @@
             writable     : false,
 
             properties   : DATAPOINTS_PROPERTIES.float,
-            protocol     : {enable: false},
-            trend        : {enable: false, refresh: 60},
+            protocol     : {
+                "enable":"none", 
+                
+                "bac_net":"",             "bac_object":"",         "bac_property":"",
+                "bac_read_enable" :false, "bac_read_refresh": 10, 
+                "bac_write_enable":false, "bac_write_prio"  : 8,
+
+                "lora_devEUI":"",         "lora_field":""
+            },
+            trend        : {enable: false, refresh: 300},
 
             newpoint     : true
         } 
@@ -300,8 +308,8 @@
             if (el.trend.enable)    el.panel.push({ icon: QqPlot,  color: "green", text: `Trend Refresh ${el.trend.refresh}sec.`})
             else                    el.panel.push({ icon: QqPlot,  color: "off"  , text: 'Trend Disabled'})    
     
-            if (el.protocol.enable) el.panel.push({ icon: ConnectionSignal, color: "green", text: 'LoRaWAN Integration Enabled'})
-            else                    el.panel.push({ icon: ConnectionSignal, color: "off"  , text: 'LoRaWAN Integration Disabled'})
+            if (el.protocol.enable !== 'none') el.panel.push({ icon: ConnectionSignal, color: "green", text: 'Protocol Integration Enabled'})
+            else                               el.panel.push({ icon: ConnectionSignal, color: "off"  , text: 'Protocol Integration Disabled'})
         });
 
         datatable.update_groups()

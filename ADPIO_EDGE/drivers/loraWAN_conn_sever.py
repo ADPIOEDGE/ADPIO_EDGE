@@ -22,9 +22,7 @@ class loraWAN_server:
 
         self.thrd = None
         self.sock = None
-
-        #self.device_db   = []
-
+        
 
     async def init_service(self, settings_adapter):
         self.port       = settings_adapter['port']
@@ -47,13 +45,17 @@ class loraWAN_server:
         self.sock.listen    (self.listen)
         self.sock.settimeout(self.settimeout)
 
-        self.thrd = threading.Thread(target=self.run_service, args=())
+        self.thrd = threading.Thread(target=self.__run_service, args=())
         self.thrd.start()
         
         return True
         
+    def __run_service(self):
+        asyncio.run( self.run_service() )
 
-    def run_service(self):
+
+
+    async def run_service(self):
         self.status = True
        
         req_data = ""
@@ -69,7 +71,7 @@ class loraWAN_server:
                     req_data += str(data, "utf-8") 
                     
                     if (len(data)  < 4096): break #If message shorter, then exit, is it the end
-                    if (len(data) == 4096 and req_data[len(req_data) - 1] == '}'): break #Check rear Accurance, when last chunk is the last
+                    if (len(data) == 4096 and req_data[-1] == '}'): break #Check rear Accurance, when last chunk is the last
 
                 if self.debug:
                     print(f"LoRaWAN Request from addr: {addr}")
@@ -77,7 +79,7 @@ class loraWAN_server:
                     print()
 
                 req_data = ujson.loads( req_data[req_data.index("{"):] )
-                self.mile_database_update(req_data)
+                await self.mile_database_update(req_data)
 
                 c_s.send( '{"status": "OK"}'.encode() ) #just any return to loraWAN
                 c_s.close()        
@@ -92,17 +94,17 @@ class loraWAN_server:
                   
 
             #Sync Values with app
-            asyncio.run( self.app_sync() )
+            await self.app_sync()
             
         self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
         
-        asyncio.run( print_log_lora(f"LoRaWAN HTTP API: Driver Terminated") )
+        await print_log_lora(f"LoRaWAN HTTP API: Driver Terminated") 
 
 
     def terminate_service(self):
         self.status = False
-        #self.device_db = [] #Memory freeed at shared memory py
+        #self.devices = [] #Memory freeed at shared memory py
  
 
     async def app_sync(self):  #update app mem
@@ -133,12 +135,12 @@ class loraWAN_server:
 
         return reslt
 
-    def mile_database_update(self, data): #update from socket (aka gateway)
-        device_db = get_loraWAN_db()
-        dev = find_device(device_db, data['devEUI'])
+    async def mile_database_update(self, data): #update from socket (aka gateway)
+        devices = get_loraWAN_db()
+        dev = find_device(devices, data['devEUI'])
         
         if dev == None: #brand new device
-           device_db.append( self.mile_to_json(data) )
+           devices.append( self.mile_to_json(data) )
         else: #update values
             dev['online']        = True
             dev['deviceName']    = data['deviceName']
@@ -153,59 +155,68 @@ class loraWAN_server:
                     else:
                         dev['data'].append({ "name": key, "value": value, "online": True, "binds": [] }) 
         
-        set_loraWAN_db(device_db)
+        set_loraWAN_db(devices)
 
 
 def add_app_loraWAN_sync(app, datapoints):
     bind_count = 0 # app: name, fields: [{name: ;'', memalloc: 1}]
 
-    device_db = get_loraWAN_db()
+    devices = get_loraWAN_db()
 
     for rec in datapoints:
-        if rec['protocol']['enable']:
+        if rec['protocol']['enable'] == 'lora':
             bind_count += 1
 
-            dev = find_device(device_db, rec['protocol']['devEUI'])
-            if dev == None: #brand new device
-                dev = {
-                        "devEUI"        : str(rec['protocol']['devEUI']),
-                        "applicationID" : '-1',
-                        "deviceName"    : '?',
-                        "online"        : False,
-                        "data"          : [],
-                    }
-                device_db.append( dev ) #Add new Device
+            device = find_device(devices, rec['protocol']['lora_devEUI'])
+            if device == None: #add new device
+                devices.append({
+                    "devEUI"        : str(rec['protocol']['lora_devEUI']),
+                    "applicationID" : '-1',
+                    "deviceName"    : '?',
+                    "online"        : False,
+                    "data"          : [],
+                })
+                device = devices[-1]
 
-            fld = find_field(dev, rec['protocol']['field'])
-            if fld == None:               
-                fld = { "name": rec['protocol']['field'], "value": '?', "online": False, "binds": [] }
-                dev['data'].append(fld)
+            field = find_field(device, rec['protocol']['lora_field'])
+            if field == None:               
+                device['data'].append({ 
+                    "name": rec['protocol']['lora_field'], 
+                    "value": '?', ""
+                    "online": False, 
+                    "binds": [] 
+                })
+                field = device['data'][-1]
 
-            fld["binds"].append({'app': app, 'datatype': rec['datatype'], 'memalloc': rec['memalloc']})
+            field["binds"].append({
+                'app'     : app, 
+                'datatype': rec['datatype'], 
+                'memalloc': rec['memalloc']
+            })
         
-    set_loraWAN_db(device_db)
+    set_loraWAN_db(devices)
 
     return bind_count
     
 
 def free_app_loraWAN_sync(app):
     bind_count = 0
-    device_db = get_loraWAN_db()
+    devices = get_loraWAN_db()
         
-    for rec in device_db:
-        for dt in rec['data']:
+    for device in devices:
+        for dt in device['data']:
             for bnd in dt['binds']:
                 if bnd['app'] == app:
                     bind_count += 1
                     dt['binds'].pop(dt['binds'].index(bnd))
 
-    set_loraWAN_db(device_db)
+    set_loraWAN_db(devices)
 
     return bind_count
 
 
-def find_device(device_db, devEUI):
-    return next((item for item in device_db if item['devEUI'].lower() == devEUI.lower()), None)
+def find_device(devices, devEUI):
+    return next((item for item in devices if item['devEUI'].lower() == devEUI.lower()), None)
 
 
 def find_field( device, field ):

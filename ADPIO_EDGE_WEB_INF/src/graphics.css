@@ -1,3 +1,7 @@
+    .flex-tile{
+        padding: 8px;
+    }
+
     .tile-basic { 
         min-width: 12rem;
         min-height: 6rem;
@@ -5,19 +9,23 @@
         position: relative;
 
         background: #eff3f7;
-        padding: 12px 5px;
+        /*padding: 12px 5px;*/
         box-sizing: border-box;
         box-shadow: 2px 2px 6px 2px rgba(0, 0, 0, 0.4);
         -moz-border-radius: 3px;
         -webkit-border-radius: 3px;
         border-radius: 3px;
-
     }
 
+    .tile-basic-group { 
+        width: 100%;
+        font-size: 1.2em;
+        text-align: center;
+    }  
 
     .tile-basic-name { 
         width: 100%;
-        font-size: 1.2em;
+        font-size: 1.4em;
         text-align: center;
     }
 
@@ -25,8 +33,6 @@
         width: 100%;
         font-size: 1.8em;
         text-align: center;
-
-        padding-top: 0.4em;
     }
 
     .tile-editable {

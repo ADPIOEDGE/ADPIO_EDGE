@@ -25,6 +25,7 @@
         Play,
         Stop,
         Save,
+        Key,
     } from "carbon-icons-svelte"
 
     import { onMount }      from 'svelte'
@@ -66,8 +67,9 @@
         data: [],
     }
     let apps_selected:  any = []
-    let buttons:        any = []
     let app_modal_flex: any = []
+
+    let buttons:        any = []
 
     function update_buttons(){ 
         let btns: any = [
@@ -97,13 +99,14 @@
                     popup_add("Command Finished", "App Build Command Finished")
                 }
             },   
-            
-            {
+        ]
+
+        if (apps_selected.length > 0 && !apps_selected[0].status)
+            btns.push({
                 text                : 'RUN',
                 color               : 'green',
                 icon                : PlayOutline,
                 disabled            : apps_selected.length === 0,
-                rendered            : (apps_selected.length > 0 && !apps_selected[0].status),
             
                 onclick             : async (e: any) => { 
                     popup_add("Executing Run Command", "Wait Command to Complete")
@@ -116,14 +119,14 @@
                     await update_data()
                     popup_add("Command Finished", "App Run Command Finished")
                 }
-            },   
+            })  
             
-            {
+        if ((apps_selected.length === 0) || (apps_selected.length > 0 && apps_selected[0].status))
+            btns.push({
                 text                : 'STOP',
                 color               : 'red',
                 icon                : StopOutline,
                 disabled            : apps_selected.length === 0,
-                rendered            : ((apps_selected.length === 0) || (apps_selected.length > 0 && apps_selected[0].status)),
 
                 onclick             : async (e: any) => { 
                     popup_add("Executing Stop Command", "Wait Command to Complete")
@@ -136,9 +139,9 @@
                     await update_data()
                     popup_add("Command Finished", "App Stop Command Finished")
                 }
-            },           
+            })           
         
-            {
+        btns.push({
                 text                : 'NEW APP',
                 color               : 'normal',
                 icon                : Add,
@@ -179,21 +182,15 @@
                 color               : 'red',
                 icon                : TrashCan,
                 disabled            : ((apps_selected.length === 0) || (apps_selected.length > 1)),
-            
+
                 with_confirmation   : true,
                 conf_title          : 'DELETE APPLICATION',
                 conf_description    : (apps_selected.length > 0) ? `Are you sure you want to delete: ${apps_selected[0].name}?`: '',
                 conf_btn_accept_txt : 'DELETE',
 
-                onclick             : async (e: any) => { 
-                    if (apps_selected.length === 0) return
-                    const res = await async_post( '/app_ide', 'delete_app', {name: apps_selected[0].name} )   
-                
-                    apps_selected = []             
-                    await update_data()
-                }
-            }, 
-        ]
+                onclick             : async (e: any) => { await delete_app() }
+            })
+        
 
         let flx: any = [
             { type: 'InputLabel'   , group: "GR", label: "APP NAME",    bind_name: 'name', visible: true, args: {
@@ -235,15 +232,24 @@
 
     }
 
+    async function delete_app(){
+        if (apps_selected.length === 0) return
+        const res = await async_post( '/app_ide', 'delete_app', {name: apps_selected[0].name} )   
+    
+        apps_selected = []             
+        await update_data()
+    }
+
 
     onMount(async () => { 
         update_data() 
         //buttons = build_buttons()
     })
+
 </script>
 
 <div class="content-panel">
-    <ControlPanel buttons={buttons} />
+    <ControlPanel buttons={buttons} hotkeys />
 </div>
 
 <div class="content-panel" >
@@ -253,6 +259,7 @@
         ondblclick= {(e: any) => { 
             buttons[find_button_index(buttons, 'OPEN')].onclick(e) 
         }}
+
         onselect = {(e:any) => {
             const ctls = update_buttons()
             buttons        = ctls[0]
@@ -277,7 +284,6 @@
         }}
     />    
 </Modal>
-
 
 
 <style>

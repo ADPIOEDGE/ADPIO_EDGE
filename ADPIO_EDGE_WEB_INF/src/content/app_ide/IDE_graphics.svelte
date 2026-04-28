@@ -73,8 +73,8 @@
 
     async function add_element(id: number, name: string){
         const new_el = {
-            "name"          : name, 
-            "description"   : "description ", 
+            //"name"          : name, 
+            //"description"   : "description ", 
             "order"         : el_move_tracker.gap,
             "view"          : application.selected_view,
             "datapoint_bind": id
@@ -293,7 +293,7 @@
 >
     {#each content as el, index}
         <!-- svelte-ignore a11y_click_events_have_key_events -->
-        <div class="tile tile-basic flex-item  { selected_elements.includes( el ) ? 'tile-selected': '' }"
+        <div class="tile tile-basic flex-tile  { selected_elements.includes( el ) ? 'tile-selected': '' }"
             onmousedown="{(e:any) => {
                 if (!e.ctrlKey) selected_elements = [] //shiftKey
                 
@@ -321,16 +321,18 @@
                 el_move_tracker = {element: {id: -1}, side: -1, gap: -1}
             }}
         >
-
-            <div class="tile-basic-name">{el.name}</div>
-            {#if el.error}
+            
+            {#if el.error || el.datapoint === undefined}
                 <div class="tile-basic-value">...</div>
             {:else}
-                <div class="tile-basic-value { el.datapoint.writable ? 'tile-editable': ''}">
+                <div class="tile-basic-group">{el.datapoint.group}</div>
+                <div class="tile-basic-name" >{el.datapoint.name}</div>
+                <div class="tile-basic-value {el.datapoint.writable ? 'tile-editable': ''}">
                     <DataDisplay readonly={true} label=''  bind:datapoint={el.datapoint}  />                    
                     {el.datapoint.units}
                 </div>
             {/if}
+
 
             {#if el_move_tracker}
                 <div class="tile-drag-overlay-left {((el_move_tracker.element.id === el.id) && (el_move_tracker.side % 2 == 0))  ? 'tile-drag-overlay-left-selected' : ''}"

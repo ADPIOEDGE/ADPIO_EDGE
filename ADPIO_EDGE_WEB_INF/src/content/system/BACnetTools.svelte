@@ -5,7 +5,7 @@
         async_post,
     } from "../../stores"
 
-    import { PRIORITY_ARRAY_LIST } from "../../../public/objects_properties"
+    import { PRIORITY_ARRAY_LIST } from "../../../public/bacnet_lists"
 
     import DataTable        from "../../adp_components/components/DataTable.svelte"
     import Modal            from "../../adp_components/components/Modal.svelte"
@@ -39,8 +39,6 @@
         DataBackup,
         SearchLocateMirror,
     } from "carbon-icons-svelte"
-    
-    
     
 
     let datatable           : any = undefined
@@ -88,7 +86,7 @@
     let obj_data: any = {
         header: "",
         colums: [       
-            /*{name: "",              key: "panel",        row_style: "width: 52px;"},      */
+            {name: "",          key: "panel",     row_style: "width: 52px;"},      
             {name: "PROPERTY",  key: "property",  row_style: "width: 240px;", }, 
             {name: "VALUE",     key: "value",     row_style: "", }, 
         ],       
@@ -326,6 +324,24 @@
                 }
             }           
         }) 
+
+
+        if (selected_object !== undefined){
+            selected_object.properties.forEach((prp: any) => {
+                prp.panel = []
+                if (prp.online) 
+                    prp.panel = [{ icon: ConnectionSignal, color: "green", text: 'Online '}]
+                else
+                    prp.panel = [{ icon: ConnectionSignal, color: "off"  , text: 'Offline'}]
+
+                if ((prp.binds.length > 0) && (prp.online === false) )
+                    prp.panel.push({ icon: DataQualityDefinition, color: "red",   text: `Failed To Bind: ${JSON.stringify(prp.binds)}` })
+                else if (prp.binds.length > 0) 
+                    prp.panel.push({ icon: DataQualityDefinition, color: "green", text: `Binded: ${JSON.stringify(prp.binds)}`})                    
+                else
+                    prp.panel.push({ icon: DataQualityDefinition, color: "off"  , text: 'No binds'})     
+            })
+        }
         
     }
 

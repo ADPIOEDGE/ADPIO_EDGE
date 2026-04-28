@@ -111,7 +111,7 @@
     }
 
     async function add_element(element: any, pos_x: number, pos_y: number){
-        const new_el = { type: element.type, id: element.el_id, name: element.el_name, x: pos_x, y: pos_y }
+        const new_el = { type: element.type, id: element.el_id, name: element.el_name, group: element.el_group, x: pos_x, y: pos_y }
 
         content = await async_post( '/app_ide_logic', 'add_element', { 
             name            : application.name, 
@@ -279,7 +279,7 @@
                 new_grp.submenu.push( {
                     id: `blocks_${el_d.id}`, name: el_d.name,
                     visible: true, draggable: true,                 
-                    type    : el_d.type, el_name : el_d.name, el_id   : el_d.id       //Datapoint Specific
+                    type    : el_d.type, el_name : el_d.name, el_group: el_d.group, el_id   : el_d.id       //Datapoint Specific
                 } )
             })
 
@@ -296,7 +296,7 @@
                 }
 
                 el.ondragevent = async (e:any) => {
-                    drop_element_event.buffer = {type: el.type, el_name: el.el_name, el_id: el.el_id}
+                    drop_element_event.buffer = {type: el.type, el_name: el.el_name, el_group: el.el_group, el_id: el.el_id}
                     drop_element_event.enabled = true
                 }
             })

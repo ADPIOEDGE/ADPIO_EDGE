@@ -57,11 +57,7 @@
                 <span>Logout, {user.user_name}</span>
             </button>  
 
-            <ConfModal 
-                title="LOGOUT CONFIRMATION" description="Are you sure?"
-                btn_accept_txt="LOGOUT?" btn_decline_txt="CANCEL"
-                bind:visible={logout_conf} on_accept={(e:any) => { logout_user() } } 
-            />              
+            
         {:else}   
             <button  class="toolbar-menu-btns" onclick={()=>{ set_navigation('Login', '/login') }} >
                 <Login />
@@ -71,6 +67,12 @@
        
     </div>
 </div>
+
+<ConfModal 
+    title="LOGOUT CONFIRMATION" description="Are you sure?"
+    btn_accept_txt="LOGOUT?" btn_decline_txt="CANCEL"
+    bind:visible={logout_conf} on_accept={(e:any) => { logout_user() } } 
+/>  
 
 <style>
 

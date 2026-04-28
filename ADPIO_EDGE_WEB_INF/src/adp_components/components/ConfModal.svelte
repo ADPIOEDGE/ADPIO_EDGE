@@ -1,5 +1,4 @@
 <script  lang="ts">
-
     export let visible:boolean = false
 
     export let title      :string = "No Title"
@@ -9,22 +8,51 @@
     export let btn_decline_txt:string = "CANCEL"
 
     export let on_accept  = function(e: any){}
+
+    let modal: any = undefined
+
+    function accept(e:any){
+        on_accept(e)
+        visible = false
+    }
+
+    function onshow(e: any){
+        modal.focus()
+    }      
 </script>
 
 {#if visible}
-    <div class="conf-modal">
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div  class="conf-modal"  >
         <div>
             <div class="conf-modal-title" >{title}</div>
             <div class="conf-modal-desc"  >{description}</div>
             
             <div class="conf-modal-button ">
-                <button class="conf-modal-cancel" onclick="{(e: any) => { visible = false }}" >{btn_decline_txt}</button>
-                <button class="conf-modal-apply"  onclick="{(e: any) => { 
-                    on_accept(e)
-                    visible = false
-                }}" >{btn_accept_txt}</button>                            
+                <button class="conf-modal-cancel" 
+                    onclick="{(e: any) => { visible = false }}" 
+                >
+                    {btn_decline_txt}
+                </button>
+                
+                <button  bind:this={modal} class="conf-modal-apply"  
+                    use:onshow                    
+                    
+                    onclick="{(e: any) => { accept(e) }}" 
+
+                    onkeydown={(e: any) => { 
+                        if (e.keyCode === 13) {
+                            accept(e)
+                            modal.blur()
+                        } else if (e.keyCode === 27) {
+                            visible = false
+                            modal.blur()
+                        }
+                    }} 
+                >
+                    {btn_accept_txt}
+                </button>
             </div>
-            
         </div>
     </div>    
 {/if}

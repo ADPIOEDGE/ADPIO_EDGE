@@ -28,6 +28,12 @@ export const USER_PROFILES = [
     { "name": "View Only",     "value": "view"  },
 ]
 
+export const PROTOCOL_LIST = [
+    { "name": "None",     "value": "none"   },
+    { "name": "BACnet",   "value": "bacnet"  },
+    { "name": "LoRaWAN",  "value": "lora"  },
+]
+
 
 export async function build_app(application_name: string) {
     return await async_post( '/app_ide', 'build_app', {name: application_name} )     

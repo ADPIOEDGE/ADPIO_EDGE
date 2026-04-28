@@ -34,8 +34,8 @@
             drag_event.pos_x = e.clientX - drag_event.layer_x
             drag_event.pos_y = e.clientY - drag_event.layer_y
 
-            const padd_tlb = 10  //padding top left
-            const padd_r   = 310 //padding right
+            const padd_tlb = 20  //padding top left
+            const padd_r   = 260 //padding right
             const padd_b   = 80  //padding bottom
             if (drag_event.pos_x < padd_tlb)                              drag_event.pos_x = padd_tlb
             if (drag_event.pos_x > $browser_params.innerWidth - padd_r)   drag_event.pos_x = $browser_params.innerWidth - padd_r
@@ -44,6 +44,7 @@
             if (drag_event.pos_y > $browser_params.innerHeight - padd_b)  drag_event.pos_y = $browser_params.innerHeight - padd_b
         }
     }
+
 </script>
 
 

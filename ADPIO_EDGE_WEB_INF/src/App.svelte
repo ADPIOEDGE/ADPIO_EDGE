@@ -32,15 +32,13 @@
     set_navigation,
     
     init_browser_params,
-    on_browser_resize,
+    set_browser_resize,
 
     set_auth_header,
     get_cookie_value,
     initialize_user
   } from "./stores.js"
-    
-
-    
+      
   $: user      = $user_params
 
   $: outerWidth  = 0
@@ -48,9 +46,22 @@
 	$: outerHeight = 0
 	$: innerHeight = 0
 
+  let resize_interval:boolean = false
+
   async function initialize_login(){
     set_navigation('Login', '/login')
     set_edit_mode (false)
+  }
+
+  async function on_resize(){
+    if (resize_interval) return
+
+    resize_interval = true
+    const interval = setInterval(() => {
+      set_browser_resize(outerWidth, innerWidth, outerHeight, innerHeight)
+      clearInterval(interval)
+      resize_interval = false
+		}, 250)
   }
 
   onMount(async () => { 
@@ -75,16 +86,16 @@
 
     //Get Browser Type and window params
     init_browser_params()
-    on_browser_resize(outerWidth, innerWidth, outerHeight, innerHeight)
-
+    
+    await on_resize()
   });
   
 
 </script>
 
   <svelte:window bind:innerWidth bind:outerWidth bind:innerHeight bind:outerHeight
-    onresize="{() => {
-      on_browser_resize(outerWidth, innerWidth, outerHeight, innerHeight)
+    onresize="{async () => {
+      await on_resize()
     }}" 
   />
 

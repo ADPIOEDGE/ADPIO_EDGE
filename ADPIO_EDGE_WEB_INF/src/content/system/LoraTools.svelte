@@ -12,7 +12,8 @@
     import {
         Edit,
         ConnectionSignal,
-        DataQualityDefinition
+        DataQualityDefinition,
+        FolderParent
     } from "carbon-icons-svelte"
 
     let datatable           : any = undefined
@@ -61,7 +62,7 @@
             {
                 text                : 'Show Device Data',
                 color               : 'normal',
-                icon                : Edit ,
+                icon                : FolderParent ,
                 disabled            : selected_device === undefined,
 
                 onclick             : async (e: any) => { await show_data_modal() }

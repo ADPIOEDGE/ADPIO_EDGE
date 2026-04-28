@@ -83,7 +83,7 @@ def main():
 
 
     #{object-name: [prop list]}
-    with open("objects_properties.ts", "w") as f:
+    with open("bacnet_lists.ts", "w") as f:
         f.write(
 """
 //Priority array

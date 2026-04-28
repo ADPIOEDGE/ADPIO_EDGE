@@ -11,8 +11,8 @@ def to_json(rec, app_status):
 
     return {
         'id'            : rec.id, 
-        'name'          : rec.name, 
-        'description'   : rec.description, 
+        #'name'          : rec.name, 
+        #'description'   : rec.description, 
         'order'         : rec.order,
         'view'          : rec.view,
         'datapoint_bind': rec.datapoint_bind,           #Datapoint bind #ID
@@ -31,8 +31,8 @@ async def add_element(db, content):
     try:
         with db_session:
             db.graphics (
-                name            = content['element']['name'] ,
-                description     = content['element']['description'],
+                #name            = content['element']['name'] ,
+                #description     = content['element']['description'],
                 order           = content['element']['order'],
                 view            = content['element']['view'],
                 datapoint_bind  = content['element']['datapoint_bind'],
@@ -47,7 +47,7 @@ async def add_element(db, content):
             
     except Exception as ex:
         print(str(ex))
-        return  {"result": "error", "error_text": "Failed to add graphical element "} 
+        return  {"result": "error", "error_text": f"Failed to add graphical element: {ex}"} 
 
 
 async def delete_element(db, content):
@@ -59,7 +59,8 @@ async def delete_element(db, content):
         return await update(db, content)
                 
     except Exception as ex:
-        return  {"result": "error", "error_text": "Failed to delete graphical element "}            
+        print(str(ex))
+        return  {"result": "error", "error_text": f"Failed to delete graphical element: {ex}"}            
 
 
 async def clear_view_elements(db, content):
@@ -68,7 +69,8 @@ async def clear_view_elements(db, content):
             db.graphics.select(lambda p: p.view == content['view']).delete(bulk=True)
         return  {"result": "ok"}
     except Exception as ex:
-        return  {"result": "error", "error_text": "Failed to clear all view graphical elements "}                  
+        print(str(ex))
+        return  {"result": "error", "error_text": f"Failed to clear all view graphical elements {ex}"}                  
 
 
 async def move_element(db, content):
@@ -81,7 +83,7 @@ async def move_element(db, content):
         return await update(db, content)
 
     except Exception as ex:
-        return  {"result": "error", "error_text": "Failed to move graphical element "}                       
+        return  {"result": "error", "error_text": f"Failed to move graphical element {ex}"}                       
 
 
 
