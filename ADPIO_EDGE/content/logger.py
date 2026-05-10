@@ -6,7 +6,7 @@ from content.users import check_permissions
 
 async def update(content):
     try:
-        return await workspace_db.load_all_records(logs_rec, to_json=True)
+        return await workspace_db.get_all_records(logs_rec, to_json=True)
     except  Exception as ex:
         print(str(ex))
         return  {"result": "error", "error_text": f"Failed update logs... ({ex})"}

@@ -30,8 +30,8 @@ from fastapi.middleware.gzip import GZipMiddleware
 from system.globals         import ROOT_FOLDER, WORKSPACE, WEB_INF_index
 from system.settings_server import settings_cfg
 
+#DB
 ### TO BE DEPRICIATED ###
-from database.db_main       import db
 from database.app_db        import apps_db_initialize, apps_db_termiante
 ### TO BE DEPRICIATED ###
 
@@ -58,7 +58,8 @@ from content.system_tools  import system_tools_mng, rebuild_logic_db
 from content.network_tools import network_tools_mng
 
 #APPS
-from system.app_engine import stop_app, run_app
+from system.app_engine              import stop_app, run_app
+from database_sql.application_model import application_db_initialize, application_db_termiante, applciation_db
 
 #Drivers
 from drivers.loraWAN_conn_sever import loraWAN_server
@@ -124,11 +125,6 @@ async def startup_shutdown(app: FastAPI):
     #Init Databases
     workspace_db.initialize()
 
-### TO BE DEPRICIATED ###
-    db.init_db()
-
-    
-
     server_mem                   = get_server_mem()
     server_mem[WORKERS_MEM_ADDR] += 1 #Workers Count
     worker                       = server_mem[WORKERS_MEM_ADDR]
@@ -138,32 +134,33 @@ async def startup_shutdown(app: FastAPI):
 
     print(f'Server Status: {server_mem[STATUS_MEM_ADDR]}, Worker={server_mem[WORKERS_MEM_ADDR]}')
 
-    auth_no_users_fix() #if there is no user - create admin/admin
-    user_cache = cached_auth()
+    await auth_no_users_fix() #if there is no user - create admin/admin
+    user_cache = await cached_auth()
 
-    #APP Autostart
-    apps_db = apps_db_initialize()
-    if worker == 1:
-        print(f"APPS Count: {len(apps_db)} \n\n" )
-        for app in apps_db:
-            print(f"{app.name} Autostart: {app.autostart}" )
-            if app.autostart:
-                await run_app(app.name)
-            print()
+    #APP database init and autostart
+    appliacations = await application_db_initialize()
+    print(f"\n\nApplications Count: {len(appliacations)}\n" )
+    #if worker == 1:
+    #    print(f"APPS Count: {len(appliacations)}\n" )
+    #    for app in appliacations:
+    #        print(f"{app.name} Autostart: {app.autostart}" )
+    #        if app.autostart:
+    #            await run_app(app.name)
+    #        print()
     
     if worker == 1:
         await print_log_system(f"ADPIO Edge Started! Debug Mode: {__debug__}\n")
     
     yield   #Before This - Startup, After - Shutdown
 
-    if worker == 1:
-        for app in apps_db:
-            try:
-                await stop_app(app.name)
-            except Exception as ex:
-                await print_app_event(f'App {app.name} stopped') 
+    #if worker == 1:
+    #    for app in appliacations:
+    #        try:
+    #            await stop_app(app.name)
+    #        except Exception as ex:
+    #            await print_app_event(f'App {app.name} stopped') 
     
-    apps_db_termiante()
+    await application_db_termiante()
 
     if worker == 1:
         await print_log_system("ADPIO Edge Terminated...")
@@ -172,9 +169,6 @@ async def startup_shutdown(app: FastAPI):
         terminal.terminate()
 
     workspace_db.terminate()
-
-### TO BE DEPRICIATED ###
-    db.close_db()
 
 
 app = FastAPI( 
@@ -224,7 +218,7 @@ async def get_index():
 @app.post("/login")
 async def login(req_json: request_jsn): #, request: Request 
     global user_cache
-    user_cache = cached_auth()
+    user_cache = await cached_auth()
     res = await user_mng({'user': '', 'profile': ''}, req_json.cmd, req_json.content)
 
     if (res['result'] == 'ok'):
@@ -331,10 +325,7 @@ def main():
         print("DEBUG ON !!!")
 
 #Init Workspace DB
-    workspace_db.initialize()
-
-### TO BE DEPRICIATED ###
-    db.init_db()    
+    workspace_db.initialize()   
 
     init_server_mem(
         terminal     = settings.terminal,
@@ -367,12 +358,7 @@ def main():
     if not settings.terminal:
         terminal.terminate()
 
-
     workspace_db.terminate()
-
-### TO BE DEPRICIATED ###
-    db.close_db()
-
 
 
 if __name__ == "__main__":

@@ -158,7 +158,7 @@
             } )
 
         if (content_update)
-            datapoints = await async_post( '/app_ide_datapoints', 'get_dataponts', { name : application.name, })
+            datapoints = await async_post( '/app_ide_datapoints', 'update', { name : application.name, })
 
         content.forEach((c_el: any) =>  {            
             c_el.error = true                           //Error If name was changed
@@ -361,11 +361,15 @@
     <InputLabel label="View Name" minlength={1} maxlength={32} bind:value={new_view} />
 
     <div style="padding-top: 20px">
-        <ButtonR text="Save" icon={Save} onclick={async (e:any, ) =>  {
-            application = await async_post( '/app_ide', 'add_view', {
+        <ButtonR text="Save" icon={Save} onclick={async (e:any) =>  {
+            const res = await async_post( '/app_ide', 'add_view', {
                 name: application.name,
                 view: new_view,
-            } )             
+            } )    
+            
+            if ( ('result' in res) && (res.result === 'error') ) return
+            application.view_list = res.view_list
+
             view_editor_modal.close(e)
         }} />
     </div>

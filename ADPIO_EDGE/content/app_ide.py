@@ -1,5 +1,3 @@
-from pony.orm import *
-
 import ujson
 import os
 from shutil import rmtree
@@ -8,130 +6,98 @@ from shutil import rmtree
 from system.globals import APPS_FOLDER
 
 #DB
-from database.db_main import db
-from database.app_db    import create_app_db, delete_app_db
+from database_sql.workspace_model   import workspace_db, application_rec
+from database_sql.application_model import create_application, delete_application
 
 #app exec
 from system.app_engine import build_app, run_app, stop_app, get_app_status
 
-
 from content.users import check_permissions
 
 
-async def to_json(rec):
+async def to_json(app_jsn):
     try:
-        status, loop = await get_app_status( rec.name ) 
+        status, loop = await get_app_status( app_jsn['name'] ) 
     except:
         status = False 
         loop = -1
 
-    res = {
-        "status"      :   status,
-        "name"        :   rec.name,
-        "group"       :   rec.group,
-        "description" :   rec.description,
-        "version"     :   rec.version,
-        "autostart"   :   rec.autostart,
-    }
+    app_jsn['status']        = status
+    app_jsn['selected_view'] = app_jsn['view_list'][0]['value'] #Set Default View
 
-    return res
-
-
-def get_app_json(app, status):
-    with db_session:
-        app_r = db.apps[ app['name'] ]
-
-        return  {
-            "name"         : app_r.name ,
-            "description"  : app_r.description ,
-            "group"        : app_r.group ,
-            "version"      : app_r.version ,
-            "status"       : status,
-            "autostart"    : app_r.autostart ,
-            "t_created"    : str(app_r.t_created),
-            "t_updated"    : str(app_r.t_updated),
-            "t_built"      : str(app_r.t_built),
-
-            "view_list"    : app_r.view_list,
-            "selected_view": app_r.view_list[0]['value'] #Set Default View                 
-        }
+    return app_jsn
 
 
 async def update_list(content):            
-    with db_session: 
-        return [ await to_json(rec) for rec in db.apps.select() ]
-        
-    return []
+    try:
+        return [ await to_json(app) for app in await workspace_db.get_all_records(application_rec, to_json=True) ]     
+    except Exception as ex:
+        print(str(ex))
+        return  {"result": "error", "error_text": f"Failed to obtain app list: {ex}"}
 
 
 async def get_app(content):
     try:
-        status, loop = await get_app_status( content['name'] ) 
-    except:
-        status = False 
-        loop = -1
-
-    try:
-        return get_app_json(content, status)
-    except:
-        return  {"result": "error", "error_text": "Failed to obtain app data"}            
+        app = await workspace_db.get_record(application_rec, application_rec.name, content['name'], to_json=True)
+        return await to_json(app)
+    except Exception as ex:
+        return  {"result": "error", "error_text": "Failed to obtain app data: {ex}"}            
             
             
 async def add_app(content):
     try:
-        with db_session:
-            db.apps (
-                name         = content['name'] ,
-                description  = content['description'] ,
-                group        = content['group'] ,
-                version      = content['version'] ,
-                autostart    = content['autostart']
-                #t_created    = str(content.t_created),
-                #t_updated    = str(content.t_updated),
-                #t_built      = str(content.t_built),                           
-            )
-    
+        await workspace_db.add_record( application_rec(
+            name          =  content["name"],
+            description   =  content["description"],
+            group         =  content["group"],
+            version       =  content["version"],
+            autostart     =  content["autostart"],
+            #t_created     =  content[""]
+            #t_updated     =  content[""]
+            #t_built       =  content[""]
+            #view          =  content[""]
+        ) )
+
         if ( not os.path.isdir(f"{APPS_FOLDER}/{content['name']}" )):
             try: 
                 os.mkdir(f"{APPS_FOLDER}/{content['name']}")
             except OSError as error:  
                 print(error)
         
-        create_app_db(content['name'])
+        create_application(content['name'])
 
         return  {"result": "ok"}
     except Exception as ex:
         print(str(ex))
-        return  {"result": "error", "error_text": f"Failed to add new app (Name should be unique, {ex})"}
+        return  {"result": "error", "error_text": f"Failed to add new app: {ex}"}
 
 
 async def save_app(content):
-    try:
-        with db_session:
-            for rec in content: 
-                app_s = db.apps[ rec['name'] ]
+    try:              
+        for rec in content: 
+            await workspace_db.update_record(
+                application_rec(
+                    name         = rec['name'],
+                    description  = rec['description'],
+                    group        = rec['group'],
+                    version      = rec['version'],
+                    autostart    = rec['autostart'],
+                    #t_created    = str(content.t_created),
+                    #t_updated    = str(content.t_updated),
+                    #t_built      = str(content.t_built), 
+                ), application_rec.name, rec['name'] )
 
-                app_s.name         = rec['name']
-                app_s.description  = rec['description']
-                app_s.group        = rec['group']
-                app_s.version      = rec['version']
-                app_s.autostart    = rec['autostart']
-                #t_created    = str(content.t_created),
-                #t_updated    = str(content.t_updated),
-                #t_built      = str(content.t_built),                   
-        
         return  {"result": "ok"}
     except  Exception as ex:
         print(str(ex))
-        return  {"result": "error", "error_text": f"Failed to save app... ({ex})"}
+        return  {"result": "error", "error_text": f"Failed to save app: {ex}"}
 
 
 async def delete_app(content): 
     try:
-        delete_app_db(content['name'])
-        
-        with db_session:
-            db.apps[content['name']].delete()
+        delete_application(content['name'])
+
+        await workspace_db.delete_record(application_rec, application_rec.name, content['name'])
 
         if (os.path.isdir(f'{APPS_FOLDER}/{content['name']}')):
             try: 
@@ -145,43 +111,53 @@ async def delete_app(content):
             print(error)            
             
         return  {"result": "ok"} 
-    except  Exception as ex:
+    except Exception as ex:
         print(str(ex))
-        return  {"result": "error", "error_text": f"Failed to delete app ({ex})"}
+        return  {"result": "error", "error_text": f"Failed to delete app: {ex}"}
 
 
 async def add_view(content):
     try:
-        with db_session:
-            app_r = db.apps[ content['name'] ]
+        app = await workspace_db.get_record(application_rec, application_rec.name, content['name'])
 
-            for rec in app_r.view_list:
-                if rec['value'] == content['view']:
-                    return  {"result": "error", "error_text": "View already exists"}
+        for rec in app.view_list:
+            if rec['value'] == content['view']:
+                return  {"result": "error", "error_text": "View already exists"}
 
-            app_r.view_list.append( {'name': content['view'], 'value': content['view']} )
-                   
-        return get_app_json(content, False)
-    except:            
-        return  {"result": "error", "error_text": "Failed to add new view"}
+        app.view_list.append( {'name': content['view'], 'value': content['view']} ) 
+        
+        app_upd = await workspace_db.update_fields(
+            application_rec, application_rec.name, app.name, 
+            {"view_list": app.view_list},
+            to_json=True
+        )
+
+        return await to_json(app_upd)  
+    except Exception as ex:            
+        return  {"result": "error", "error_text": f"Failed to add new view: {ex}"}
 
 
 async def delete_view(content):
     try:
-        with db_session:
-            app_r = db.apps[ content['name'] ]
-    
-            if len(app_r.view_list) == 1:
-                return  {"result": "error", "error_text": "At least one view should exist "}
+        app = await workspace_db.get_record(application_rec, application_rec.name, content['name'])
 
-            for rec in app_r.view_list:
-                if rec['value'] == content['view']:
-                    app_r.view_list.remove(rec)
-                    break
+        if len(app.view_list) == 1:
+            return  {"result": "error", "error_text": f"At least one view should exist: {ex}"}
 
-        return get_app_json(content, False)
-    except:                
-        return  {"result": "error", "error_text": "Failed to delete view"}
+        for rec in app.view_list:
+            if rec['value'] == content['view']:
+                app.view_list.remove(rec)
+                break
+
+        app_upd = await workspace_db.update_fields(
+            application_rec, application_rec.name, app.name, 
+            {"view_list": app.view_list},
+            to_json=True
+        )
+
+        return await to_json(app_upd)
+    except Exception as ex:               
+        return  {"result": "error", "error_text": f"Failed to delete view: {ex}"}
 
 
 async def app_status(content):
@@ -191,7 +167,6 @@ async def app_status(content):
     except:
         print(f'App {content['name']} Offline')
     
-
     return { 'result': 'ok', }
 
 

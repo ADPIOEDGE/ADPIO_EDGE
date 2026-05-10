@@ -122,7 +122,7 @@
                 conf_description    : (selected_datapoints.length > 0) ? `Are you sure you want to delete: ${get_point_list(selected_datapoints)}?`: '', 
                 conf_btn_accept_txt : 'DELETE',
 
-                onclick             : async (e: any) => { await delete_datapoint()  }
+                onclick             : async (e: any) => { await delete_datapoints()  }
             },       
         ]
 
@@ -234,11 +234,11 @@
     }
 
 
-    async function delete_datapoint(){
+    async function delete_datapoints(){
         if (selected_datapoints.length > 0){
             let el_set:any = []
             selected_datapoints.forEach(async (el: any) =>  { el_set.push({ id: el.id}) })
-            data.data = await async_post( '/app_ide_datapoints', 'delete_datapoint', { name: application.name, datapoints: el_set } )
+            data.data = await async_post( '/app_ide_datapoints', 'delete_datapoints', { name: application.name, datapoints: el_set } )
         }
 
         selected_datapoints = []
@@ -323,7 +323,6 @@
 
     onMount(async () => { 
         await update_data(true)
-        
         buttons = update_buttons()
 
         if (application.status === true) live_data()
@@ -360,12 +359,12 @@
     
     <ButtonR text="Save" icon={Save} color="green" onclick={async (e:any) =>  {
         if (editmode_datapoints[0].newpoint){ 
-            data.data = await async_post( '/app_ide_datapoints', 'add_datapoint', { 
+            data.data = await async_post( '/app_ide_datapoints', 'add_datapoints', { 
                 name: application.name, 
                 datapoints: editmode_datapoints,
             } ) 
         } else {
-            data.data = await async_post( '/app_ide_datapoints', 'save_datapoint', { 
+            data.data = await async_post( '/app_ide_datapoints', 'save_datapoints', { 
                 name: application.name, 
                 datapoints: editmode_datapoints,
             } )

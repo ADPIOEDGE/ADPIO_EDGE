@@ -75,7 +75,7 @@
             view            : application.selected_view,
         } )
 
-        datapoints = await async_post( '/app_ide_datapoints', 'get_dataponts', { name : application.name, })
+        datapoints = await async_post( '/app_ide_datapoints', 'update', { name : application.name, })
 
         if (application.status)  await live_data()
     }

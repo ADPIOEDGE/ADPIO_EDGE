@@ -34,10 +34,9 @@ async def build_app(app):
 
     print(f'>>>> Building {app} <<<<')  
 
-    datapoints      = load_datapoints(app)
-    datapoints      = save_mem_alloc(app, datapoints) #Allocate Memory
-
-    block_list      = load_blocks(app)
+    datapoints      = await load_datapoints(app)
+    datapoints      = await save_mem_alloc(app, datapoints) #Allocate Memory
+    block_list      = await load_blocks(app)
 
     libimport, getters, setters, constants, blocks, binds = sort_blocks(block_list)   
 
@@ -187,7 +186,9 @@ def build_binds(app, src_code, b_list):# c_list, block_list):
     for b_rec in b_list: #Binds
         b_rec['mem'] = mem
         inject_code_mem += f'            None, #{b_rec['name']}, alloc = {b_rec['mem']}\n'
-        save_bind_alloc(app, b_rec['f_id'], b_rec['io'], mem - 1) #need -1 because we do not send array length
+        asyncio.run(
+            save_bind_alloc(app, b_rec['f_id'], b_rec['io'], mem - 1) #need -1 because we do not send array length
+        )
         mem += 1
 
     src_code = src_code.replace('#<BINDS_LENGTH/>',    f'{len(b_list)},') #Define Defaults

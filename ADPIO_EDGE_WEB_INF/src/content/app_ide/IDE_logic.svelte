@@ -138,6 +138,7 @@
     }
 
     async function on_edit_block(block: any){
+        if (block.type !== "constant") return
         edit_block = JSON.parse( JSON.stringify(block) )
         edit_block_modal.open(120, 120)
     }
@@ -350,8 +351,8 @@
         <LENBlock bind:selected={selected} bind:selected_binds={selected_binds}  bind:drag_event={drag_event}
             bind:content={content} block={block} 
             blk_height={blk_height} blk_width={blk_width}  user={user}
-            on_flip_datapoint={ async (e:any) => { await on_flip_datapoint(block) } }
-            on_dblclick={ async (e:any) => { await on_edit_block(block) } }
+            on_flip_datapoint= { async (e:any) => { await on_flip_datapoint(block) } }
+            on_dblclick      = { async (e:any) => { await on_edit_block(block)     } }
         />   
     {/each} 
 

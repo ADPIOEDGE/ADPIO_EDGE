@@ -2,26 +2,14 @@ import ujson
 from secrets                import compare_digest
 from base64                 import b64encode
 
+from database_sql.workspace_model import workspace_db, user_rec, application_rec
 
-### TO BE DEPRICIATED ###
-from pony.orm               import *
-from database.db_main       import db
-
-
-
-def to_json_datatable(rec):
-    return {
-        "user_name"     :  rec.name,
-        "profile"       :  rec.profile ,
-        "description"   :  rec.description,
-    }
  
 async def get_tree(content):
     view_tree = []
     edit_tree = []
 
-    with db_session: 
-        app_list = db.apps.select()
+    app_list = await workspace_db.get_all_records(application_rec)
 
     groups = []
     for app in app_list:
@@ -33,7 +21,6 @@ async def get_tree(content):
             {'id': f'/view/{app.group}/{app.name}', 'name': app.name, 'type': 'menu', 'visible': True, 'draggable': False} 
         )
 
-
     view_tree = get_view_tree(view_tree)
     
     if content['profile'] == 'developer':
@@ -44,54 +31,48 @@ async def get_tree(content):
 
 async def user_list(content):
     try:
-        with db_session: 
-            return [ to_json_datatable(rec) for rec in db.users.select().limit(64) ]
+        return await workspace_db.get_all_records(user_rec, to_json=True)
     except Exception as ex:
         print(str(ex))
-        return  {"result": "error", "error_text": "Failed to obtain user data"}
+        return  {"result": "error", "error_text": "Failed to obtain user list"}
+
 
 async def get_user(content):
     try:
-        with db_session:
-            user = db.users[ content['name'] ]
-            return  {
-                'name':         user.name,
-                'description':  user.description,
-                'profile':      user.profile,
-                'password':     user.password,
-                'homepage':     user.homepage,
-            }
+        return await workspace_db.get_record(user_rec, user_rec.name,  content['name'] )
     except Exception as ex:
         print(str(ex))
         return  {"result": "error", "error_text": "Failed to obtain user data"}
 
+
 async def add_user(content):
     try:
-        with db_session:
-            db.users (
-                name        = content['name'],
-                password    = content['password'],
-                
-                homepage    = content['homepage'],
-                profile     = content['profile'],
-                description = content['description'],
-            )
-            return  {"result": "ok"}
+        await workspace_db.add_record(user_rec(
+            name        = content['name'],
+            password    = content['password'],
+
+            homepage    = content['homepage'],
+            profile     = content['profile'],
+            description = content['description'],
+        ))
+
+        return  {"result": "ok"}
     except Exception as ex:
         return  {"result": "error", "error_text": "Failed to add user (already exists?)"}
 
 async def save_user(content):
-    try:
-        with db_session:
-            user_s = db.users[ content['name'] ]
-            
-            user_s.name        = content['name']
-            user_s.password    = content['password']
-            
-            user_s.homepage    = content['homepage']
-            user_s.profile     = content['profile']
-            user_s.description = content['description']
-        
+    try:        
+        await workspace_db.update_record(
+            user_rec(
+                name        = content['name'],
+                password    = content['password'],
+
+                homepage    = content['homepage'],
+                profile     = content['profile'],
+                description = content['description'],
+            ), 
+            user_rec.name, content['name'] )
+
         return  {"result": "ok"}
     except Exception as ex:
         print(str(ex))
@@ -100,16 +81,15 @@ async def save_user(content):
 
 async def delete_user(content):   
     try:
-        with db_session:
-            db.users[content['name']].delete()   
-            return  {"result": "ok"} 
+        await workspace_db.delete_record(user_rec, user_rec.name, content['name'])
+        return  {"result": "ok"}
     except Exception as ex:
         print(str(ex))
         return  {"result": "error", "error_text": "Failed to delete user "}
 
 
 async def login(content):
-    user_cache = cached_auth()        
+    user_cache = await cached_auth()        
     busr = content['key'].encode('utf8')
     
     for rec in user_cache :
@@ -121,7 +101,7 @@ async def login(content):
     return { "result": "error", "auth": False, "error_text": "The Username or Password is Incorrect" }
 
 async def sessionkey(content):
-    user_cache = cached_auth() 
+    user_cache = await cached_auth() 
     busr = content['key'].encode('utf8')
     for rec in user_cache :
         if compare_digest( rec['key'], busr):
@@ -130,8 +110,9 @@ async def sessionkey(content):
             return { "result": "ok", "auth": True, "sessionkey": rec['sessionkey'], "user": rec['user'], "profile": rec['profile']}#"cache": rec } #random sessoin key, should go to cookie             
     return  {"result": "error",  "auth": False, "error_text": "User Was Logged Out"}
 
+
 async def logout(content):
-    print("LOGOUT ATTEMPT *************")
+    print("LOGOUT *************")
     return  {"result": "error", "error_text": "Failed to logout (not implemented yet)"}
 
 
@@ -177,39 +158,33 @@ def get_view_tree(tree: list):
     return tree    
 
 
-def auth_no_users_fix():
-    users = []
-    
-    with db_session: 
-        users = db.users.select().limit(64) 
-        
+async def auth_no_users_fix():    
+    users = await workspace_db.get_all_records(user_rec)
+
     if __debug__:
         print("Checking User Existance Count: " + str(len(users)))
         
     if len(users) == 0:
         print("No Users Found, creating admin/admin user")
-        with db_session:
-            db.users (
-                name        = 'admin',
-                password    = 'admin',
-                
-                homepage    = '',
-                profile     = 'developer',
-                description = 'Default Admin User',
-            )         
-        
 
-def cached_auth():
-    with db_session: 
-        return [  
-            { 
-                'key'           : b64encode( (rec.name + ":" + rec.password).encode('utf8') ), #convert to byte -> b64 encode
-                'user'          : rec.name,
-                'profile'       : rec.profile,
-                'sessionkey'    : b64encode( (rec.name + ":" + rec.password).encode('utf8') ).decode("utf-8").__str__(), #token_urlsafe(16)   #random sessoin key should be implemented, should go to cookie 
-            } for rec in db.users.select().limit(64) ]
+        await workspace_db.add_record(user_rec(
+            name        = 'admin',
+            password    = 'admin',
                 
-    return []
+            homepage    = '',
+            profile     = 'developer',
+            description = 'Default Admin User',
+        ))
+
+
+async def cached_auth():
+    return [{
+        'key'           : b64encode( (usr.name + ":" + usr.password).encode('utf8') ), #convert to byte -> b64 encode
+        'user'          : usr.name,
+        'profile'       : usr.profile,
+        'sessionkey'    : b64encode( (usr.name + ":" + usr.password).encode('utf8') ).decode("utf-8").__str__(), #token_urlsafe(16)   #random sessoin key should be implemented, should go to cookie 
+    } for usr in await workspace_db.get_all_records(user_rec)]    
+
 
 def check_permissions(auth, perm_profiles):
     if perm_profiles == '': #If perm empty, allow not authed req

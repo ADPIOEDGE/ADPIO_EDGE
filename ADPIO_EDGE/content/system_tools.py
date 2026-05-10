@@ -7,30 +7,10 @@ from glob import glob
 #settings
 from system.globals     import WORKSPACE, ROOT_FOLDER
 
+from database_sql.workspace_model import workspace_db, logic_palette_rec
+from content.users                import check_permissions
 
 
-### TO BE DEPRICIATED ###
-from database.db_main   import db
-from pony.orm import *
-
-
-
-from database_sql.workspace_model import workspace_db, logs_rec
-from content.users      import check_permissions
-
-
-def logic_to_json(rec):
-    return { 
-        'id':               rec.id, 
-        'name':             rec.name, 
-        'description':      rec.description, 
-        'group':            rec.group,
-        'type':             rec.type,
-        'function':         rec.function,
-        'libimport':        rec.libimport,
-        'io':               rec.io, 
-    }
-    
 def sort_by_order(rec):
     return rec["order"]
 
@@ -69,32 +49,33 @@ async def rebuild_logic_db(content):
                 
             block_db.append(group)
 
-               
+
         #Sort By group order
         block_db.sort(key=sort_by_order)
-        
-
-        with db_session:
-            db.logic_palette.select().delete(bulk = True)
+            
+        await workspace_db.delete_all_records(logic_palette_rec) #clear table for rebuild        
 
         print('\n\n')
-        with db_session:
-            for group in block_db:
-                grp_name = group['name']
-                print(str(group['name']))
+    
+        logic_list = []
+        for group in block_db:
+            grp_name = group['name']
+            print(str(group['name']))
 
-                for block in group['blocks']:
-                    print("     -   " + str(block['name']))
-                    db_rec = db.logic_palette(
-                        id          = block['id'], 
-                        name        = block['name'], 
-                        description = block['description'], 
-                        group       = grp_name,
-                        libimport   = block['import'],
-                        type        = block['type'],
-                        function    = block['function'],
-                        io          = block['io'],
-                    )        
+            for block in group['blocks']:
+                logic_list.append(logic_palette_rec(
+                    id          = block['id'], 
+                    name        = block['name'], 
+                    description = block['description'], 
+                    group       = grp_name,
+                    libimport   = block['import'],
+                    type        = block['type'],
+                    function    = block['function'],
+                    io          = block['io'],
+                ))
+
+        await workspace_db.add_records(logic_list)
+
 
         #Copy Files To Workfolder
         src_folder = ROOT_FOLDER + '/assets/lib_embed'
@@ -127,10 +108,11 @@ async def rebuild_logic_db(content):
 
 
 async def update_logic(content):
-    with db_session: #, content["app_status"]
-        return [ logic_to_json(rec) for rec in db.logic_palette.select() ]
-    
-    return []
+    try:
+        return await workspace_db.get_all_records(logic_palette_rec, to_json=True)
+    except  Exception as ex:
+        print(str(ex))
+        return  {"result": "error", "error_text": f"Failed ro get logic palette... ({ex})"}
 
 
 async def update_logic_grouped(content):
@@ -148,10 +130,10 @@ async def update_logic_grouped(content):
 
     return groups
 
+
 async def get_block(content):
     try:
-        with db_session:
-            return db.logic_palette[content['id']]
+        return await workspace_db.get_record(logic_palette_rec, logic_palette_rec.id, content['id'])        
     except Exception as ex:
         print("Failed To Find Block In Palette: " + str(ex))
         return None

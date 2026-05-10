@@ -1,8 +1,10 @@
 
+#TO BE DEPRECIATED
 from pony.orm import *
-from database.db_main import db
-
 from database.model_app    import  app_datapoint_rec, app_graph_rec, app_logic_rec, app_trend_rec
+#TO BE DEPRECIATED
+
+from database_sql.workspace_model import workspace_db, application_rec
 
 from system.globals import APPS_FOLDER
 
@@ -40,10 +42,9 @@ class __app_db:
             print(f"APP {self.app_name} Data Base Terminated...")
 
 
-def apps_db_initialize():
+async def apps_db_initialize():
     app_list = []
-    with db_session: 
-        app_list = db.apps.select() 
+    app_list = await workspace_db.get_all_records(application_rec)
 
     for rec in app_list:
         create_app_db(rec.name)
@@ -51,7 +52,7 @@ def apps_db_initialize():
     return app_list
 
 
-def apps_db_termiante():
+async def apps_db_termiante():
     for rec in apps_db:
         rec.close_db()
 

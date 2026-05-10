@@ -39,7 +39,7 @@
     let data = {
         header: "",
         colums: [
-            {name: "USER NAME",    key: "user_name"   , row_style: ""}, 
+            {name: "USER NAME",    key: "name"        , row_style: ""}, 
             {name: "PROFILE",      key: "profile"     , row_style: ""},
             {name: "DESCRIPTION",  key: "description" , row_style: ""},
         ],
@@ -70,14 +70,9 @@
                 color               : 'normal',
                 icon                : Edit,
                 disabled            : user_selected === undefined,
-
                 with_confirmation   : false, 
 
-                onclick             : async (e: any) => { 
-                    new_user_mode = false
-                    user_edit_modal.open(e.clientX, e.clientY) 
-                    get_user()
-                }
+                onclick             : async (e: any) => { await on_user_edit(e) }
             }, 
 
             {
@@ -88,12 +83,12 @@
 
                 with_confirmation   : true,
                 conf_title          : 'DELETE USER',
-                conf_description    : (user_selected  !== undefined) ? `Are you sure you want to delete user: ${user_selected.user_name}?`: '', 
+                conf_description    : (user_selected  !== undefined) ? `Are you sure you want to delete user: ${user_selected.name}?`: '', 
                 conf_btn_accept_txt : 'DELETE',
 
                 onclick             : async (e: any) => { 
                     if (user_selected === undefined) return
-                    await async_post( '/user', 'delete_user', { name: user_selected.user_name } )   
+                    await async_post( '/user', 'delete_user', { name: user_selected.name } )   
 
                     user_selected = undefined
                     await update_data()
@@ -103,9 +98,15 @@
 
         return btn
     }
+
+    async function on_user_edit(e: any){
+        new_user_mode = false
+        user_edit_modal.open(e.clientX, e.clientY) 
+        get_user()
+    }
     
     async function get_user(){
-        const rec = await async_post( '/user', 'get_user', {name: user_selected.user_name} )  
+        const rec = await async_post( '/user', 'get_user', {name: user_selected.name} )  
         edit_user = JSON.parse( JSON.stringify( rec ) )
         edit_user.password2 = rec.password
     }
@@ -129,7 +130,8 @@
 <div class="content-panel" >
    <DataTable data={data} selectable_rows  context_btns={buttons}
         bind:selected_row={user_selected}
-        onselect={(e) => { buttons = update_buttons() }}
+        onselect  ={       (e: any) => { buttons = update_buttons() }}
+        ondblclick={ async (e: any) => { await on_user_edit(e)      }}
    />
 </div>
 

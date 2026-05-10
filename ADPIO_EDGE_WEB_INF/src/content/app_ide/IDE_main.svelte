@@ -158,10 +158,8 @@
                 }
         })
         
-
         return btns
     }
-
 
     async function update_app(app_name: string){
         const app = await async_post( '/app_ide', 'get_app', {name: app_name} )  
@@ -177,7 +175,6 @@
         //Application
         application = await update_app(app_name)
         buttons     = update_buttons()
-
     })
 </script>
 
