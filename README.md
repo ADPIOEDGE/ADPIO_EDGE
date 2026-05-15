@@ -14,12 +14,12 @@ At this moment works on linux only.
 
 Dependencies for Python:
 ```
-  python312 - PonyORM lagging behind, this is why py 3.12 is used
+  python312 +
   uvicorn
   uvloop
   fastapi
   ujson
-  pony
+  sqlmodel
   bacpypes3
   psutil #cpu and mem info
 ```

@@ -4,7 +4,9 @@ import asyncio
 
 from content.logger         import print_log_bacnet
 from system.shared_mem      import get_server_mem, server_mem_name, BCNT_DB_MEM_ADDR, BCNT_CMD_MEM_ADDR
-from assets.dataconversion  import set_mem_value, get_mem_value
+from lib.dataconversion  import set_mem_value, get_mem_value
+
+from lib.database_sql.application_model import datapoints_rec
 
 from bacpypes3.debugging import bacpypes_debugging, ModuleLogger
 from bacpypes3.argparse import SimpleArgumentParser
@@ -20,7 +22,6 @@ from bacpypes3.apdu import ErrorRejectAbortNack
 
 #from bacpypes3.object        import Object as _client_object
 #from bacpypes3.local.object  import Object as _server_object
-
 
 
 class bacnet_server():
@@ -482,7 +483,7 @@ def find_property(object, property):
     return None
 
 
-async def add_app_BACnet_sync(app, datapoints):
+async def add_app_BACnet_sync(app, datapoints: list[datapoints_rec]):
     bind_count = 0 # app: name, fields: [{name: ;'', memalloc: 1}]        
     devices = get_devices()
 
@@ -492,15 +493,15 @@ async def add_app_BACnet_sync(app, datapoints):
 # "bac_read_refresh":10,"bac_write_enable":false,"bac_write_prio":8,"enable":"bacnet",    
 
     for rec in datapoints:
-        if rec['protocol']['enable'] == 'bacnet':
+        if rec.protocol['enable'] == 'bacnet':
             bind_count += 1
            
-            device = find_device(devices, rec['protocol']['bac_net'])
+            device = find_device(devices, rec.protocol['bac_net'])
             if device == None: #add new device
                 devices.append({   
                     "id"            : len(devices),
                     "device_id"     : -1,
-                    "net"           : str(rec['protocol']['bac_net']),
+                    "net"           : str(rec.protocol['bac_net']),
                     "name"          : "",
                     "description"   : "",
                     "location"      : "",
@@ -513,39 +514,39 @@ async def add_app_BACnet_sync(app, datapoints):
 
                 device = devices[-1]
  
-            object = find_object(device, rec['protocol']['bac_object'])
+            object = find_object(device, rec.protocol['bac_object'])
             if object == None:
                 device['objects'].append({
                     "object_id"  : len(device['objects']),
-                    "object"     : str(rec['protocol']['bac_object']),
+                    "object"     : str(rec.protocol['bac_object']),
                     "name"       : "",
                     "value"      : "", 
                     "properties" : [], #name, datatype, value
                 })     
                 object = device['objects'][-1]       
 
-            property = find_property(object, rec['protocol']['bac_property'])
+            property = find_property(object, rec.protocol['bac_property'])
             if property == None:
                 object['properties'].append({
-                    "property"     : rec['protocol']['bac_property'],
+                    "property"     : rec.protocol['bac_property'],
                     "value"        : "", 
                     "online"       : False,
                     "binds"        : []
                 })
                 property = object['properties'][-1]
             
-            value = await get_mem_value(app, rec['memalloc'])
+            value = await get_mem_value(app, rec.memalloc)
             property['binds'].append({
                 'app'         : app, 
-                'datatype'    : rec['datatype'], 
-                'memalloc'    : rec['memalloc'],
+                'datatype'    : rec.datatype, 
+                'memalloc'    : rec.memalloc,
 
-                "read_enable" : rec['protocol']['bac_read_enable'],
-                "read_refresh": rec['protocol']['bac_read_refresh'],
-                "read_timeout": rec['protocol']['bac_read_refresh'],
+                "read_enable" : rec.protocol['bac_read_enable'],
+                "read_refresh": rec.protocol['bac_read_refresh'],
+                "read_timeout": rec.protocol['bac_read_refresh'],
                 
-                "write_enable": rec['protocol']['bac_write_enable'],
-                "write_prio"  : rec['protocol']['bac_write_prio'],
+                "write_enable": rec.protocol['bac_write_enable'],
+                "write_prio"  : rec.protocol['bac_write_prio'],
                 "old_value"   : value,
             })
 

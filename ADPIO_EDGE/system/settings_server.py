@@ -3,7 +3,8 @@ import os
 import shutil
 import asyncio 
 
-from system.globals       import ROOT_FOLDER, WORKSPACE, APPS_FOLDER, ASSET_FOLDER
+from lib.globals       import ROOT_FOLDER, WORKSPACE, APPS_FOLDER, ASSET_FOLDER
+from system.shared_mem import DB_REBUILD_MEM_ADDR
 
 
 class settings_cfg:
@@ -24,7 +25,6 @@ class settings_cfg:
             try: 
                 os.mkdir(WORKSPACE)
                 self.auto_rebuild = True
-
             except OSError as error:  
                 print(error)
                 
@@ -55,11 +55,6 @@ class settings_cfg:
                 os.mkdir(WORKSPACE + '/log')
             except OSError as error:  
                 print(error)      
-        
-        #If First Init - rebuild logic palette automatically
-        #if first_init:            
-        #    asyncio.run( rebuild_logic_db({}) )
-        #    print("Logic DB rebuilt successfully")
                                       
         
     def read_settings(self):

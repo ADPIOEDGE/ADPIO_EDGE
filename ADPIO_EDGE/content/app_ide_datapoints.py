@@ -1,7 +1,7 @@
 import ujson
 
 #DB
-from database_sql.application_model import datapoints_rec, find_application_db
+from lib.database_sql.application_model import datapoints_rec, find_application_db
 
 from content.users import check_permissions
 
@@ -29,7 +29,7 @@ async def add_datapoints(app_db, content):
         for rec in content["datapoints"]:
             group = rec['group']
             if group == '':
-                group = 'No Group'
+                group = ' '
 
             dps.append( datapoints_rec(
                 name         = rec['name'] ,
@@ -71,6 +71,10 @@ async def save_datapoints(app_db, content):
     try:
         dps = []
         for rec in content["datapoints"]:
+            group = rec['group']
+            if group == '':
+                group = ' '
+
             dps.append( datapoints_rec(
                 id           = rec['id'],
                 name         = rec['name'] ,
@@ -97,21 +101,21 @@ async def save_datapoints(app_db, content):
 
 async def load_datapoints(app_name):    
     application_db = find_application_db(app_name)
-    return await application_db.get_all_records(datapoints_rec, to_json=True)
+    return await application_db.get_all_records(datapoints_rec)
 
 
-async def save_mem_alloc(app_name, datapoints):    
+async def save_mem_alloc(app_name, datapoints: list[datapoints_rec]):    
     application_db = find_application_db(app_name)
-    
+
     mem_alloc = 3 #Starts from 3
+    mem_list = []
     for dp in datapoints:
-        await application_db.update_fields(
-            datapoints_rec, datapoints_rec.id, dp['id'],
-            {'memalloc': mem_alloc}
-        )
-        dp.memalloc         = mem_alloc
-        
+        mem_list.append( {'id': dp.id, 'memalloc': mem_alloc} )
+        dp.memalloc = mem_alloc
         mem_alloc += 1
+
+    if (len(mem_list) > 0):
+        await application_db.update_multi_fields(datapoints_rec, datapoints_rec.id, 'id', mem_list)
 
     return datapoints    
 

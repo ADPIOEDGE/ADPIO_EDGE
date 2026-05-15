@@ -4,7 +4,7 @@
     } from "../../stores"
 
     export let label    :string = ""
-    export let value    :any
+    export let value    :number
     export let type     :string = "int" //Float or Integer
 
     export let readonly :boolean  = false
@@ -22,8 +22,7 @@
     const r_id:string = random_id()
     let focused: boolean = false
 
-    let inpt: any = undefined
-
+    let inpt   : any = undefined
 
     function check_pattern(e: any){
         var numberRegex: any = /^\d+$/; //Numbers only
@@ -67,7 +66,7 @@
         if (type === 'float')
             v = parseFloat( v.toFixed(decimals) )
 
-        return v
+        return Number(v)
     }
 
 
@@ -92,21 +91,14 @@
                     if (!focused) return
                     e.preventDefault()
                     
-                    let val: number = 0
+                    let val: number = Number(e.target.value)
 
-                    if (type === 'float')
-                        val = parseFloat(e.target.value) || 0
-                    else 
-                        val = parseInt(e.target.value) || 0
-
-                    if (e.deltaY < 0) {
+                    if (e.deltaY < 0)
                         val += step   // Increase
-                    } else if (e.deltaY > 0) {
+                    else if (e.deltaY > 0) 
                         val -= step   // Decrease
-                    }
 
-                    value = check_limits(val).toString() 
-                    
+                    value = check_limits(val)
                     onchange(e)
                 }}
 
@@ -116,16 +108,9 @@
 
                 onfocus = {() => { focused = true  }}
                 onblur  = {(e: any) => { 
-                    let val: number = 0
-                    if (type === 'float')
-                        val = parseFloat(value) || 0
-                    else 
-                        val = parseInt(value) || 0
-
                     focused = false 
-                    value = check_limits(val).toString()
-
                     onchange(e)
+                    value = check_limits(value)
                 }}
             >
         {/if}

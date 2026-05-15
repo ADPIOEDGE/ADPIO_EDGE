@@ -1,7 +1,7 @@
 import ujson
 
 #DB
-from database_sql.application_model import logic_rec, find_application_db
+from lib.database_sql.application_model import logic_rec, find_application_db
 
 from content.users          import check_permissions
 from content.system_tools   import get_block
@@ -17,7 +17,7 @@ async def update(app_db, content):
 
 async def load_blocks(app_name):    
     application_db = find_application_db(app_name)
-    return await application_db.get_all_records(logic_rec, to_json=True)
+    return await application_db.get_all_records(logic_rec)
 
 
 async def move_elements(app_db, content):
@@ -189,19 +189,15 @@ async def delete_binds(app_db, content):
 
 
 async def save_bind_alloc(app_name, f_id, io_index, mem):    
-    #application_db = find_application_db(app_name)
+    application_db = find_application_db(app_name)
 
-    #with db_session:
-    #    el       = db.logic[f_id]
-    #    io       = el.io[io_index]
-    #    io['mem'] = mem
+    el       = await application_db.get_record(logic_rec, logic_rec.id, f_id) 
+    el.io[io_index]['mem'] = mem
 
-    print('BROKEN save_bind_alloc')
-
-    #await application_db.update_fields(
-    #    datapoints_rec, datapoints_rec.id, f_id,
-    #    {'memalloc': mem_alloc}, to_json=True
-    #)
+    await application_db.update_fields(
+        logic_rec, logic_rec.id, f_id,
+        {'io': el.io}
+    )
     
 
 

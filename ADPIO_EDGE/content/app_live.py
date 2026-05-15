@@ -1,4 +1,3 @@
-from pony.orm import *
 import ujson
 
 #app exec

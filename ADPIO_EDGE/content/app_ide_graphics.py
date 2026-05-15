@@ -1,14 +1,14 @@
 import ujson
 
 #DB
-from database_sql.application_model import graphics_rec, find_application_db
+from lib.database_sql.application_model import graphics_rec, find_application_db
 
 from content.users import check_permissions
 
 
 async def update(app_db, content):
     try:
-        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by=graphics_rec.order)
+        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by_asc=graphics_rec.order)
     except Exception as ex:
         print(str(ex))
         return  {"result": "error", "error_text": f"Failed to obtain graphics: {ex}"}    
@@ -22,7 +22,7 @@ async def add_element(app_db, content):
             datapoint_bind  = content['element']['datapoint_bind'],
         ))                 
 
-        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by=graphics_rec.order)     
+        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by_asc=graphics_rec.order)     
     except Exception as ex:
         print(str(ex))
         return  {"result": "error", "error_text": f"Failed to add graphical element: {ex}"} 
@@ -35,7 +35,7 @@ async def delete_element(app_db, content):
             [rec['id'] for rec in content["elements"]]
         )
 
-        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by=graphics_rec.order)
+        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by_asc=graphics_rec.order)
     except Exception as ex:
         print(str(ex))
         return  {"result": "error", "error_text": f"Failed to delete graphical element: {ex}"}            
@@ -57,25 +57,25 @@ async def move_element(app_db, content):
             [ {'id': rec['id'], 'order': rec['place']} for rec in content["elements"] ]
         )
 
-        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by=graphics_rec.order)
+        return await app_db.get_records(graphics_rec, graphics_rec.view, content['view'], to_json=True, order_by_asc=graphics_rec.order)
     except Exception as ex:
         return  {"result": "error", "error_text": f"Failed to move graphical element {ex}"}                       
 
 
-def reorder_graphics(app):
-    print('!!!!!!!!!!!!!!! BROKEN reorder_graphics')
-#    db = find_app_db(app)
-#    with db_session:
-#        data = db.graphics.select().order_by(lambda r: r.order)
-#
-#    new_order = 0.0
-#    for el in data:
-#        
-#        with db_session:
-#            el       = db.graphics[el.id]
-#            el.order = new_order
-#
-#        new_order += 1.0
+async def reorder_graphics(app):
+    db = find_application_db(app)
+    widgets = await db.get_all_records(graphics_rec, order_by_asc=graphics_rec.order)
+
+    new_order = 0.0
+    wg_list   = []
+    for wg in widgets:
+        wg_list.append({'id': wg.id, 'order': new_order})
+        new_order += 1.0
+
+    await db.update_multi_fields(
+        graphics_rec, graphics_rec.id, 'id',
+        wg_list
+    )
 
 
 COMMANDS_DICT = {

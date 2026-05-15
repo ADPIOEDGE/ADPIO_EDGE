@@ -1,4 +1,3 @@
-from pony.orm import *
 import ujson
 
 from datetime import datetime
@@ -8,9 +7,11 @@ from content.app_ide            import update_list
 from content.app_ide_datapoints import load_datapoints
 
 #DB
-from database.app_db    import find_app_db
+from lib.database_sql.application_model  import find_application_db, trend_rec, datapoints_rec
+from sqlmodel import col
+from sqlalchemy.sql import text
 
-from assets.dataconversion import  str_to_dp
+from lib.dataconversion import  str_to_dp
 
 from content.users import check_permissions
 
@@ -28,51 +29,47 @@ def to_json(rec, utc_off = 0):
     }
 
 
-async def get_trend_list(db, content):
+async def get_trend_list(application_db, content):
     trend_list = []    
     app_list = await update_list({})
 
     for app in app_list:
-        data_p_list = load_datapoints(app['name'])
-        
+        data_p_list: list[datapoints_rec] = await load_datapoints(app['name'])        
         new_sheme = {"name": app['name'], "value": app['name'], "trends": [] }
         
         for dp in data_p_list:
-            if dp['trend']['enable']:
-                new_sheme['trends'].append({"name": dp['name'], "value": dp['name']})
+            if dp.trend['enable']:
+                new_sheme["trends"].append({"name": dp.name, "value": dp.name})
                 
         trend_list.append(new_sheme)
     
     return trend_list 
 
 
-async def load_trend(db, content):
+async def load_trend(application_db, content):
     utc_off = datetime.now().astimezone().utcoffset().total_seconds()
 
     try:
-        with db_session:
-            return [ to_json(rec, utc_off) for rec in db.trends
-                    .select(name = content['datapoint'])
-                    .order_by(desc(db.trends.time))
-                    .limit(1600)
-            ]        
+        trend_recs: list[trend_rec] = await application_db.get_all_records(trend_rec, order_by_desc=trend_rec.time, limit=1200)
+        return [ to_json(rec, utc_off) for rec in trend_recs ]
     except Exception as ex:
         return  {"result": "error", "error_text": f"Failed To Load Last Trend {ex}"}    
-        
-async def load_date_range_trend(db, content):
+
+
+async def load_date_range_trend(application_db, content):
     utc_off = datetime.now().astimezone().utcoffset().total_seconds()
 
     start_date = datetime.fromisoformat(content['start'] + " 00:00:00.000000")#.replace("08:00:00", "00:00:00")
     end_date   = datetime.fromisoformat(content['end']   + " 23:59:59.999999")#.replace("08:00:00", "23:59:59")
 
     try:
-        with db_session:
-            return [ to_json(rec, utc_off) for rec in db.trends
-                    .select(name = content['datapoint'])
-                    .filter(lambda rec: rec.time >= start_date and rec.time <= end_date)
-                    .order_by(desc(db.trends.time))
-                    .limit(1600)
-            ]        
+        trend_recs: list[trend_rec] = await application_db.get_records_range(
+            trend_rec, trend_rec.time,
+            start_date, end_date, 
+            order_by_desc=trend_rec.time, 
+            limit=1200
+        )
+        return [ to_json(rec, utc_off) for rec in trend_recs ]   
     except Exception as ex:
         return  {"result": "error", "error_text": f"Failed To Load Date Range Trend {ex}"}    
     
@@ -93,8 +90,9 @@ async def default_msg(content):
 async def trends_tools_mng(auth, cmd, content):
     app_db = None
     content_json = ujson.loads( content )
+    
     if 'app' in content_json:
-        app_db = find_app_db(content_json["app"])
+        app_db = find_application_db(content_json["app"])
 
 
     if check_permissions(auth, COMMANDS_DICT['perm_' + cmd]):

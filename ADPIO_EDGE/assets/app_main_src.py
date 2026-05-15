@@ -1,61 +1,58 @@
 import asyncio
 import sys
 
-from pony.orm import *
-
 #Shared Memory
 from multiprocessing.shared_memory    import ShareableList
 
-
 #<LIBIMPORT/>
 
-from terminal import terminal_web
-from app_lib import  __app_db_runtime
-from dataconversion import str_to_dp
+#DB
+from lib.database_sql.sqlmodel_driver   import engine_db
+from lib.database_sql.application_model import application_model, datapoints_rec, trend_rec
+
+from lib.terminal       import terminal_web
+from lib.dataconversion import str_to_dp
+
+from lib.globals        import APPS_FOLDER
 
 
-APP_NAME   = "nonameapp"
-app_db     = None
+APP_NAME        = "nonameapp"
+application_db  = None
 
 
 async def startup(shared_mem):
-    global app_db
+    global application_db
+
+    application_db = engine_db(f'sqlite:///{APPS_FOLDER}/{APP_NAME}/application.db', application_model)
+    application_db.initialize()
+
+    datapoints: list[datapoints_rec] = await application_db.get_all_records(datapoints_rec)
+    for d_rec in datapoints:
+        shared_mem[d_rec.memalloc] = str_to_dp(d_rec.value, d_rec.datatype, fallback = True)
     
-    app_db = __app_db_runtime(APP_NAME)
-    app_db.init_db()
-    
-    with db_session:
-        dp = app_db.datapoints.select()
-        
-        for d_rec in dp:
-            shared_mem[d_rec.memalloc] = str_to_dp(d_rec.value, d_rec.datatype, fallback = True)
-        
-        sys.stdout.write(f"{APP_NAME} Loading Datapoint Values (Count {len(dp)})...\n")
+    sys.stdout.write(f"{APP_NAME} Loading Datapoint Values (Count {len(datapoints)})...\n")
 
 
 async def save_current_values(shared_mem):
-    global app_db
+    global application_db
     
-    dp_ids = []
-    with db_session:    #Save All Datapoints
-        dp = app_db.datapoints.select()
-        
-        for d_rec in dp:
-            dp_ids.append(d_rec.id)
-       
-    with db_session:    
-        for d_id in dp_ids:        
-            up_rec = app_db.datapoints[d_id]
-            up_rec.value = str(shared_mem[up_rec.memalloc])
+    datapoints: list[datapoints_rec] = await application_db.get_all_records(datapoints_rec)
+    mem_list = []
+    
+    for dp in datapoints:
+        mem_list.append({'id': dp.id, 'value': str(shared_mem[dp.memalloc])})
+
+    if (len(mem_list) > 0):
+        await application_db.update_multi_fields(datapoints_rec, datapoints_rec.id, 'id', mem_list)
             
 
 async def terminate(shared_mem):
     await save_current_values(shared_mem)
-    app_db.close_db()
+    application_db.terminate()
 
 
 async def trends_sync(shared_mem, trend_list, sleep):
-    global app_db
+    global application_db
 
     for tr in trend_list:
         tr["left"] -= sleep
@@ -64,18 +61,18 @@ async def trends_sync(shared_mem, trend_list, sleep):
             tr["old_value"] = shared_mem[tr["memalloc"]]
             tr["left"] = tr["refresh"]     
             
-            with db_session:                           
-                app_db.trends (         
-                    name     = tr['name'],
-                    value    = str(shared_mem[tr["memalloc"]]),
-                    datatype = tr['datatype'],
-                )
-    
+            await application_db.add_record( trend_rec (
+                name     = tr['name'],
+                value    = str(shared_mem[tr["memalloc"]]),
+                datatype = tr['datatype'],                
+            ) )
+
     return trend_list
 
 
 async def exec():
-    terminal = terminal_web(f'apps_{APP_NAME}', True)
+    if not __debug__:
+        terminal = terminal_web(f'apps_{APP_NAME}', True)
 
     SLEEP      = 1
     sys.stdout.write(f'APP {APP_NAME} Initializing...\n')
@@ -145,11 +142,11 @@ async def exec():
     bind_mem.shm.unlink()
 
     sys.stdout.write(f'APP {APP_NAME} Terminated.\n')
-    terminal.terminate()
+    if not __debug__:
+        terminal.terminate()
 
 
 if __name__ == "__main__":
     if __debug__: sys.stdout.write("DEBUG For APPS is on. Run with -O to turn off debug\n")
-
     asyncio.run( exec() )
 

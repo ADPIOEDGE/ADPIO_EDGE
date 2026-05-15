@@ -12,8 +12,6 @@ import shutil
 import asyncio
 import glob
 
-
-
 import bacpypes3.object as _client_object
 
 def main():

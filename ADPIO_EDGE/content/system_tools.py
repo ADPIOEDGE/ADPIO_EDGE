@@ -5,9 +5,12 @@ from shutil import rmtree, copytree, copyfile
 from glob import glob
 
 #settings
-from system.globals     import WORKSPACE, ROOT_FOLDER
+from lib.globals     import WORKSPACE, ROOT_FOLDER
+from content.logger     import print_log_system
 
-from database_sql.workspace_model import workspace_db, logic_palette_rec
+#Db
+from lib.database_sql.workspace_model import workspace_db, logic_palette_rec
+
 from content.users                import check_permissions
 
 
@@ -17,7 +20,7 @@ def sort_by_order(rec):
     
 async def rebuild_logic_db(content):   
     try:
-        file_list = glob('./assets/lib_embed/*.py') 
+        file_list = glob('./lib/lib_embed/*.py') 
         print("File List: " + str(file_list))
         
         block_db = []
@@ -25,7 +28,7 @@ async def rebuild_logic_db(content):
         for file in file_list: 
             print('\nScanning: ' + file)
 
-            imortloc = str(file).replace('./assets/', '').replace('.py', '').replace('/', '.')
+            imortloc = str(file).replace('./lib/', '').replace('.py', '').replace('/', '.')
             filename = str(imortloc).split(".")[-1]
             
             print("Import Location: " + imortloc)
@@ -49,15 +52,14 @@ async def rebuild_logic_db(content):
                 
             block_db.append(group)
 
-
         #Sort By group order
         block_db.sort(key=sort_by_order)
             
         await workspace_db.delete_all_records(logic_palette_rec) #clear table for rebuild        
 
-        print('\n\n')
-    
+        print('\n')    
         logic_list = []
+
         for group in block_db:
             grp_name = group['name']
             print(str(group['name']))
@@ -76,9 +78,8 @@ async def rebuild_logic_db(content):
 
         await workspace_db.add_records(logic_list)
 
-
         #Copy Files To Workfolder
-        src_folder = ROOT_FOLDER + '/assets/lib_embed'
+        src_folder = ROOT_FOLDER + '/lib/lib_embed'
         dst_folder = WORKSPACE   + '/lib_embed'
 
         if os.path.exists(dst_folder):
@@ -86,20 +87,31 @@ async def rebuild_logic_db(content):
         
         copytree(src_folder, dst_folder)
 
-        #Copy app_lib
-        src_folder = ROOT_FOLDER + '/assets/app_lib.py'
-        dst_folder = WORKSPACE   + '/app_lib.py' 
-        copyfile(src_folder, dst_folder)
+        #Clear lib folder
+        if os.path.exists(WORKSPACE + '/lib'):
+            rmtree(WORKSPACE + '/lib')
+
+        #Copy DB Driver
+        src_folder = ROOT_FOLDER + '/lib/database_sql'
+        dst_folder = WORKSPACE   + '/lib/database_sql' 
+        copytree(src_folder, dst_folder)
         
         #Copy Dataconversion
-        src_folder = ROOT_FOLDER + '/assets/dataconversion.py'
-        dst_folder = WORKSPACE   + '/dataconversion.py' 
+        src_folder = ROOT_FOLDER + '/lib/dataconversion.py'
+        dst_folder = WORKSPACE   + '/lib/dataconversion.py' 
         copyfile(src_folder, dst_folder)      
 
         #Copy Terminal
-        src_folder = ROOT_FOLDER + '/assets/terminal.py'
-        dst_folder = WORKSPACE   + '/terminal.py' 
-        copyfile(src_folder, dst_folder)              
+        src_folder = ROOT_FOLDER + '/lib/terminal.py'
+        dst_folder = WORKSPACE   + '/lib/terminal.py' 
+        copyfile(src_folder, dst_folder)
+
+        #Copy Globals
+        src_folder = ROOT_FOLDER + '/lib/globals.py'
+        dst_folder = WORKSPACE   + '/lib/globals.py' 
+        copyfile(src_folder, dst_folder)
+
+        await print_log_system('Logic DB rebuilt sucessfully!')        
 
         return await update_logic(content)
     except Exception as ex:

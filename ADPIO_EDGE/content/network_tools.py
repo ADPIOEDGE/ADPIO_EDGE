@@ -1,11 +1,10 @@
-from pony.orm import *
 import ujson
 
 #Tools
 from drivers.loraWAN_conn_sever import get_loraWAN_db
 from drivers.loraWAN_conn_sever import find_device as find_device_lora
 
-from drivers.bacnet_server      import get_devices, set_devices, get_tasks, set_tasks, add_new_tasks, find_device, find_object, find_property
+from drivers.bacnet_server      import get_devices, add_new_tasks, find_device, find_object
 
 from content.users import check_permissions
 

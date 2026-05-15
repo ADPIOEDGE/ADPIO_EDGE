@@ -3,11 +3,11 @@ import os
 from shutil import rmtree
 
 #settings
-from system.globals import APPS_FOLDER
+from lib.globals import APPS_FOLDER
 
 #DB
-from database_sql.workspace_model   import workspace_db, application_rec
-from database_sql.application_model import create_application, delete_application
+from lib.database_sql.workspace_model   import workspace_db, application_rec
+from lib.database_sql.application_model import create_application, delete_application
 
 #app exec
 from system.app_engine import build_app, run_app, stop_app, get_app_status

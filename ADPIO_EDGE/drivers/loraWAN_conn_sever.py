@@ -3,13 +3,13 @@ import socket
 import ujson
 import asyncio
 
-from assets.dataconversion      import set_mem_value
+from lib.dataconversion      import set_mem_value
 
 #Connects loraWAN via http. loraWAN - client - this one is server
 from content.logger    import print_log_lora
 from system.shared_mem import get_server_mem, LORA_MEM_ADDR
 
-
+from lib.database_sql.application_model import datapoints_rec
 
 class loraWAN_server:
     def __init__(self):
@@ -158,19 +158,19 @@ class loraWAN_server:
         set_loraWAN_db(devices)
 
 
-def add_app_loraWAN_sync(app, datapoints):
+def add_app_loraWAN_sync(app, datapoints: list[datapoints_rec]):
     bind_count = 0 # app: name, fields: [{name: ;'', memalloc: 1}]
 
     devices = get_loraWAN_db()
 
     for rec in datapoints:
-        if rec['protocol']['enable'] == 'lora':
+        if rec.protocol['enable'] == 'lora':
             bind_count += 1
 
-            device = find_device(devices, rec['protocol']['lora_devEUI'])
+            device = find_device(devices, rec.protocol['lora_devEUI'])
             if device == None: #add new device
                 devices.append({
-                    "devEUI"        : str(rec['protocol']['lora_devEUI']),
+                    "devEUI"        : str(rec.protocol['lora_devEUI']),
                     "applicationID" : '-1',
                     "deviceName"    : '?',
                     "online"        : False,
@@ -178,10 +178,10 @@ def add_app_loraWAN_sync(app, datapoints):
                 })
                 device = devices[-1]
 
-            field = find_field(device, rec['protocol']['lora_field'])
+            field = find_field(device, rec.protocol['lora_field'])
             if field == None:               
                 device['data'].append({ 
-                    "name": rec['protocol']['lora_field'], 
+                    "name": rec.protocol['lora_field'], 
                     "value": '?', ""
                     "online": False, 
                     "binds": [] 
@@ -190,8 +190,8 @@ def add_app_loraWAN_sync(app, datapoints):
 
             field["binds"].append({
                 'app'     : app, 
-                'datatype': rec['datatype'], 
-                'memalloc': rec['memalloc']
+                'datatype': rec.datatype, 
+                'memalloc': rec.memalloc
             })
         
     set_loraWAN_db(devices)

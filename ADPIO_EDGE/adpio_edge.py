@@ -6,13 +6,6 @@ import uvicorn
 import asyncio
 from pydantic import BaseModel
 
-
-### TO BE DEPRICIATED ###
-from pony.orm import *
-### TO BE DEPRICIATED ###
-from sqlmodel import Field, Session, SQLModel, create_engine
-
-
 #FAST API
 from fastapi                 import FastAPI, Request
 from fastapi.responses       import HTMLResponse
@@ -20,26 +13,18 @@ from fastapi.staticfiles     import StaticFiles
 from contextlib              import asynccontextmanager
 from fastapi.middleware.gzip import GZipMiddleware
 
-
 #This more advanced, for future
 #from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 #from pydantic import BaseModel
 
-
 #SYSTEM
-from system.globals         import ROOT_FOLDER, WORKSPACE, WEB_INF_index
+from lib.globals            import ROOT_FOLDER, WORKSPACE, WEB_INF_index
 from system.settings_server import settings_cfg
 
 #DB
-### TO BE DEPRICIATED ###
-from database.app_db        import apps_db_initialize, apps_db_termiante
-### TO BE DEPRICIATED ###
-
-from database_sql.workspace_model import workspace_db
-
+from lib.database_sql.workspace_model import workspace_db
 from system.shared_mem      import init_server_mem, clear_server_mem, get_server_mem, STATUS_MEM_ADDR, WORKERS_MEM_ADDR, DB_REBUILD_MEM_ADDR, TERMINAL_MEM_ADDR
-from assets.terminal        import terminal_web
-
+from lib.terminal           import terminal_web
 
 #app_ide
 from content.app_ide            import app_ide_mng
@@ -59,7 +44,7 @@ from content.network_tools import network_tools_mng
 
 #APPS
 from system.app_engine              import stop_app, run_app
-from database_sql.application_model import application_db_initialize, application_db_termiante, applciation_db
+from lib.database_sql.application_model import application_db_initialize, application_db_termiante, applciation_db, application_rec
 
 #Drivers
 from drivers.loraWAN_conn_sever import loraWAN_server
@@ -107,11 +92,8 @@ async def on_server_startup_drivers(settings):
 async def on_server_shutdown_drivers():
     global loraWAN_serv, bacnet_serv
 
-    if not loraWAN_serv == None:
-        loraWAN_serv.terminate_service()
-
-    if not bacnet_serv == None:
-        bacnet_serv.terminate_service()        
+    if not loraWAN_serv == None:  loraWAN_serv.terminate_service()
+    if not bacnet_serv  == None:  bacnet_serv.terminate_service()        
 
     server_mem = get_server_mem()
     server_mem[STATUS_MEM_ADDR] = 2 #Server Status - Off
@@ -132,33 +114,32 @@ async def startup_shutdown(app: FastAPI):
     if not server_mem[TERMINAL_MEM_ADDR]:
         terminal = terminal_web('system', True) #Terminal For Workers
 
-    print(f'Server Status: {server_mem[STATUS_MEM_ADDR]}, Worker={server_mem[WORKERS_MEM_ADDR]}')
+    print(f'Server Status: {server_mem[STATUS_MEM_ADDR]}, Worker={worker}')
 
     await auth_no_users_fix() #if there is no user - create admin/admin
     user_cache = await cached_auth()
 
     #APP database init and autostart
-    appliacations = await application_db_initialize()
-    print(f"\n\nApplications Count: {len(appliacations)}\n" )
-    #if worker == 1:
-    #    print(f"APPS Count: {len(appliacations)}\n" )
-    #    for app in appliacations:
-    #        print(f"{app.name} Autostart: {app.autostart}" )
-    #        if app.autostart:
-    #            await run_app(app.name)
-    #        print()
-    
+    appliacations: application_rec = await application_db_initialize()
+    if worker == 1:
+        print(f"\n\nApplications Count: {len(appliacations)}:" )
+        for app in appliacations:
+            print(f"{app.name} Autostart: {app.autostart}" )
+            if app.autostart:
+                await run_app(app.name)
+        print()
+
     if worker == 1:
         await print_log_system(f"ADPIO Edge Started! Debug Mode: {__debug__}\n")
     
     yield   #Before This - Startup, After - Shutdown
 
-    #if worker == 1:
-    #    for app in appliacations:
-    #        try:
-    #            await stop_app(app.name)
-    #        except Exception as ex:
-    #            await print_app_event(f'App {app.name} stopped') 
+    if worker == 1:
+        for app in appliacations:
+            try:
+                await stop_app(app.name)
+            except Exception as ex:
+                await print_app_event(f'App {app.name} stopped') 
     
     await application_db_termiante()
 
@@ -334,7 +315,7 @@ def main():
         bacnet_alloc = settings.bacnet_server ['alloc_size'],
     )
 
-    if not settings.terminal:
+    if not settings.terminal and not __debug__:
         print("Custom STDOUT/ERR Initialized... Look In Log Files ")
         terminal = terminal_web('system', True) #Main Terminal
 
@@ -347,6 +328,8 @@ def main():
         host      = settings.uvicorn["host"],
         port      = settings.uvicorn["port"],
 
+        #loop      = "uvloop",
+
         reload    = auto_reload,
         workers   = workers,
         log_level = log_lvl,
@@ -355,7 +338,7 @@ def main():
     asyncio.run( on_server_shutdown_drivers() )
     clear_server_mem()
 
-    if not settings.terminal:
+    if not settings.terminal and not __debug__:
         terminal.terminate()
 
     workspace_db.terminate()

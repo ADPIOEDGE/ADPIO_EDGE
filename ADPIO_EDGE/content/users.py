@@ -2,7 +2,7 @@ import ujson
 from secrets                import compare_digest
 from base64                 import b64encode
 
-from database_sql.workspace_model import workspace_db, user_rec, application_rec
+from lib.database_sql.workspace_model import workspace_db, user_rec, application_rec
 
  
 async def get_tree(content):

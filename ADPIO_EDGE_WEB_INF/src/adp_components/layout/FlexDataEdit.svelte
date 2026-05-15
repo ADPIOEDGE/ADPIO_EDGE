@@ -331,6 +331,7 @@
                             onchange={()=>{ on_value_change( wg ) }}
                         />
                     </div>
+                    
 <!-- BACnet -->
                     {#if wg.bind.enable === 'bacnet'}
                         <div class="data_edit_flex_left">Network</div>
@@ -387,8 +388,6 @@
                             </div>
                         {/if}
 
-                        
-
  <!-- LoRaWAN -->                       
                     {:else if wg.bind.enable === 'lora'}
                         <div class="data_edit_flex_left">Devie EUI</div> 
@@ -411,7 +410,6 @@
                             />
                         </div> 
                     {/if}
-
 
 <!-- Trend Edit -->
                 {:else if wg.type === 'TrendEdit'}
@@ -445,8 +443,6 @@
         {/each}
         
     </div>
-
-
 
 
 <style>
