@@ -78,6 +78,14 @@ async def exec():
     sys.stdout.write(f'APP {APP_NAME} Initializing...\n')
 
 #Shared Mems
+    try:
+        shared_mem = ShareableList(name=f'{APP_NAME}_sharedmem') 
+        shared_mem.shm.close()
+        shared_mem.shm.unlink()
+    except:
+        if __debug__:
+            print("Server Memory Not Exists")
+
     shared_mem = ShareableList( [
             True, 0, #Default Field: Status/Loop Count
             #<DATAPOINTS_LENGTH/>
@@ -87,6 +95,14 @@ async def exec():
     )
 
 #Binds
+    try:
+        bind_mem = ShareableList(name=f'{APP_NAME}_bindmem') 
+        bind_mem.shm.close()
+        bind_mem.shm.unlink()
+    except:
+        if __debug__:
+            print("Server Memory Not Exists")
+
     bind_mem = ShareableList( [
             #<BINDS_LENGTH/> #Buffer Length
             

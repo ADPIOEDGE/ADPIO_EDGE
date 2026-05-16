@@ -316,7 +316,7 @@ async def run_app(app):
 
     await print_app_event(f'{app} Started: {sub_proc}' )
 
-    await asyncio.sleep(2)
+    await asyncio.sleep(0.5)
 
     #Register DP Mapping in drivers
     dp = await load_datapoints(app)

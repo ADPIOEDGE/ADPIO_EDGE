@@ -23,7 +23,7 @@ from system.settings_server import settings_cfg
 
 #DB
 from lib.database_sql.workspace_model import workspace_db
-from system.shared_mem      import init_server_mem, clear_server_mem, get_server_mem, STATUS_MEM_ADDR, WORKERS_MEM_ADDR, DB_REBUILD_MEM_ADDR, TERMINAL_MEM_ADDR
+from system.shared_mem      import init_server_mem, clear_server_mem, get_server_mem, STATUS_MEM_ADDR, DB_REBUILD_MEM_ADDR
 from lib.terminal           import terminal_web
 
 #app_ide
@@ -43,19 +43,20 @@ from content.system_tools  import system_tools_mng, rebuild_logic_db
 from content.network_tools import network_tools_mng
 
 #APPS
-from system.app_engine              import stop_app, run_app
+from system.app_engine                  import stop_app, run_app
 from lib.database_sql.application_model import application_db_initialize, application_db_termiante, applciation_db, application_rec
 
 #Drivers
 from drivers.loraWAN_conn_sever import loraWAN_server
 from drivers.bacnet_server      import bacnet_server
 
-
 #from multiprocessing import freeze_support
+
 
 INDEX       = ""
 user_cache  = []
 worker      = -1
+terminal    = None
 
 loraWAN_serv = None
 bacnet_serv  = None
@@ -67,8 +68,8 @@ class request_jsn(BaseModel): #for standart commands, update, delete record and 
     content: str = ''
 
 
-async def on_server_startup_drivers(settings):
-    global loraWAN_serv, bacnet_serv
+async def on_server_startup(settings: settings_cfg):
+    global loraWAN_serv, bacnet_serv, terminal
     server_mem = get_server_mem()
 
     #Check If Workspace properly initialized
@@ -77,7 +78,10 @@ async def on_server_startup_drivers(settings):
         await rebuild_logic_db({})
         print("\n\nAuto Rebuild Complete!!!\n\n")
 
+    print('\n')
+
     #Initialize drivers
+    print('Starting Drivers...')
     if settings.lorawan_server['net_autostart']:
         loraWAN_serv = loraWAN_server()
         await loraWAN_serv.init_service( settings.lorawan_server )
@@ -85,18 +89,53 @@ async def on_server_startup_drivers(settings):
     if settings.bacnet_server['net_autostart']:
         bacnet_serv = bacnet_server()
         await bacnet_serv.init_service( settings.bacnet_server )
-
+    
     server_mem[STATUS_MEM_ADDR] = 1 #Server Status - On
 
+    print('Starting Terminal...')
+    if not settings.terminal and not __debug__:  terminal = terminal_web('system', True) #Terminal For Workers
+    
+    #Start Apps
+    print('Starting Apps on server startup...')
+    appliacations = await application_db_initialize()
+    print(f"\nApplications Count: {len(applciation_db)}:\n" )
+    for app in appliacations:
+        print(f"{app.name} Autostart: {app.autostart}" )
+        if app.autostart:
+            try:
+                await run_app(app.name)
+            except Exception as ex:
+                 print(f"Failed to autostart {app.name}: {ex}" )
+    print('\n\n')    
+    await application_db_termiante()
 
-async def on_server_shutdown_drivers():
-    global loraWAN_serv, bacnet_serv
+    await print_log_system(f"ADPIO Edge Started! Debug Mode: {__debug__}")
 
+
+async def on_server_shutdown():
+    global loraWAN_serv, bacnet_serv, terminal
+
+    #Stop Apps
+    print('Terminating Apps on server shotdown...')
+    appliacations = await application_db_initialize()
+    for app in appliacations:
+        try:
+            await stop_app(app.name)
+        except Exception as ex:
+            await print_app_event(f'App {app.name} stopped')
+    await application_db_termiante()
+
+    #Stop Drivers
     if not loraWAN_serv == None:  loraWAN_serv.terminate_service()
     if not bacnet_serv  == None:  bacnet_serv.terminate_service()        
 
     server_mem = get_server_mem()
     server_mem[STATUS_MEM_ADDR] = 2 #Server Status - Off
+
+    #Stop Apps
+    if terminal != None:  terminal.terminate()
+
+    await print_log_system("ADPIO Edge Terminated...")
 
     
 @asynccontextmanager
@@ -108,47 +147,15 @@ async def startup_shutdown(app: FastAPI):
     workspace_db.initialize()
 
     server_mem                   = get_server_mem()
-    server_mem[WORKERS_MEM_ADDR] += 1 #Workers Count
-    worker                       = server_mem[WORKERS_MEM_ADDR]
+    await asyncio.sleep(0.2)
 
-    if not server_mem[TERMINAL_MEM_ADDR]:
-        terminal = terminal_web('system', True) #Terminal For Workers
-
-    print(f'Server Status: {server_mem[STATUS_MEM_ADDR]}, Worker={worker}')
+    print(f'Server Status: {server_mem[STATUS_MEM_ADDR]}, Worker Started')
 
     await auth_no_users_fix() #if there is no user - create admin/admin
     user_cache = await cached_auth()
 
-    #APP database init and autostart
-    appliacations: application_rec = await application_db_initialize()
-    if worker == 1:
-        print(f"\n\nApplications Count: {len(appliacations)}:" )
-        for app in appliacations:
-            print(f"{app.name} Autostart: {app.autostart}" )
-            if app.autostart:
-                await run_app(app.name)
-        print()
-
-    if worker == 1:
-        await print_log_system(f"ADPIO Edge Started! Debug Mode: {__debug__}\n")
-    
     yield   #Before This - Startup, After - Shutdown
-
-    if worker == 1:
-        for app in appliacations:
-            try:
-                await stop_app(app.name)
-            except Exception as ex:
-                await print_app_event(f'App {app.name} stopped') 
     
-    await application_db_termiante()
-
-    if worker == 1:
-        await print_log_system("ADPIO Edge Terminated...")
-
-    if not server_mem[TERMINAL_MEM_ADDR]:
-        terminal.terminate()
-
     workspace_db.terminate()
 
 
@@ -211,14 +218,16 @@ async def login(req_json: request_jsn): #, request: Request
 #User and Navigation
 @app.post("/app_ide")
 async def app_ide(request: Request, req_json: request_jsn ): #, request: Request    
-    global user_cache
+    global user_cache, worker
     user_auth = check_auth(request.headers.get("authorization"))
+
     return await app_ide_mng(user_auth, req_json.cmd, req_json.content)
 
 
 @app.post("/app_ide_datapoints")
 async def app_ide_datapoints(request: Request, req_json: request_jsn ): #, request: Request 
     global user_cache
+
     user_auth = check_auth(request.headers.get("authorization"))
     return await app_ide_datapoints_mng(user_auth, req_json.cmd, req_json.content)
 
@@ -315,12 +324,8 @@ def main():
         bacnet_alloc = settings.bacnet_server ['alloc_size'],
     )
 
-    if not settings.terminal and not __debug__:
-        print("Custom STDOUT/ERR Initialized... Look In Log Files ")
-        terminal = terminal_web('system', True) #Main Terminal
-
     print("Initializing APDIO EDGE...")
-    asyncio.run( on_server_startup_drivers(settings) )
+    asyncio.run( on_server_startup(settings) )
     
     #Init FastAPI
     uvicorn.run(
@@ -328,20 +333,17 @@ def main():
         host      = settings.uvicorn["host"],
         port      = settings.uvicorn["port"],
 
-        #loop      = "uvloop",
-
         reload    = auto_reload,
         workers   = workers,
         log_level = log_lvl,
+
+        #loop      = "uvloop",
     )   
 
-    asyncio.run( on_server_shutdown_drivers() )
-    clear_server_mem()
-
-    if not settings.terminal and not __debug__:
-        terminal.terminate()
+    asyncio.run( on_server_shutdown() )
 
     workspace_db.terminate()
+    clear_server_mem()
 
 
 if __name__ == "__main__":

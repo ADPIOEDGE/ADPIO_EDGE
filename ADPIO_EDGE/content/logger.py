@@ -1,10 +1,6 @@
 import ujson
 
 from lib.database_sql.workspace_model import workspace_db, logs_rec, workspace_model
-from sqlmodel import col
-from sqlalchemy.sql import text
-from sqlmodel import select, desc, asc
-
 from content.users import check_permissions
 
 

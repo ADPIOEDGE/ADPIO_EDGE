@@ -8,9 +8,6 @@ from content.app_ide_datapoints import load_datapoints
 
 #DB
 from lib.database_sql.application_model  import find_application_db, trend_rec, datapoints_rec
-from sqlmodel import col
-from sqlalchemy.sql import text
-
 from lib.dataconversion import  str_to_dp
 
 from content.users import check_permissions
@@ -66,8 +63,7 @@ async def load_date_range_trend(application_db, content):
         trend_recs: list[trend_rec] = await application_db.get_records_range(
             trend_rec, trend_rec.time,
             start_date, end_date, 
-            order_by_desc=trend_rec.time, 
-            limit=1200
+            order_by_desc=trend_rec.time, limit=1200
         )
         return [ to_json(rec, utc_off) for rec in trend_recs ]   
     except Exception as ex:

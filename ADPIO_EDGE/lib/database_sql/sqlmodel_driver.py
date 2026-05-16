@@ -19,12 +19,11 @@ class engine_db:
         self.model     = model
 
 
-    def initialize(self):
-        self.engine = create_engine   (self.db_addr)#,echo=True)
-        self.model.metadata.create_all(self.engine)
+    def initialize(self, create_model = True):
+        self.engine = create_engine   (self.db_addr)    #,echo=True)
+        if create_model: self.model.metadata.create_all(self.engine)
 
-        if __debug__:
-            print(f"{self.db_addr} Data Base Initilized")  
+        if __debug__: print(f"{self.db_addr} Data Base Initilized")  
 
 
     async def add_record(self, record):
@@ -194,4 +193,5 @@ class engine_db:
 
 
     def terminate(self):
+        if __debug__: print(f"{self.db_addr} Data Base Terminated")  
         self.engine.dispose()

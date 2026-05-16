@@ -119,7 +119,7 @@ class trend_rec(application_model, table=True):
     
 
 async def application_db_initialize():
-    app_list = await workspace_db.get_all_records(application_rec)
+    app_list: list[application_rec] = await workspace_db.get_all_records(application_rec)
 
     for rec in app_list:
         create_application(rec.name)
@@ -128,22 +128,35 @@ async def application_db_initialize():
 
 
 async def application_db_termiante():
+    global applciation_db
+
     for rec in applciation_db:
         rec.terminate()
 
     applciation_db.clear()
 
 
-def find_application_db(app_name):
+def find_application_db(app_name, db_auto_init = True):
+    global applciation_db
+
     for db in applciation_db:
         if db.name == app_name:
             return db
 
+    if db_auto_init: #if db not found, probably it is worker
+        new_app_db = engine_db(f"sqlite:///{APPS_FOLDER}/{app_name}/application.db", application_model, name=app_name)
+        new_app_db.initialize(create_model=False)
+        applciation_db.append(new_app_db)
+                
+        return new_app_db
+    
     return None
 
 
 def create_application(app_name):
-    app = find_application_db(app_name)
+    global applciation_db
+
+    app = find_application_db(app_name, db_auto_init = False)
 
     if app == None:
         new_app_db = engine_db(f"sqlite:///{APPS_FOLDER}/{app_name}/application.db", application_model, name=app_name)
@@ -152,7 +165,9 @@ def create_application(app_name):
 
 
 def delete_application(app_name):
-    app = find_application_db(app_name)
+    global applciation_db
+
+    app = find_application_db(app_name,  db_auto_init = False)
 
     if app != None:
         app.terminate()
@@ -160,4 +175,4 @@ def delete_application(app_name):
 
 
 #engine_db(f"sqlite:///{APPS_FOLDER}/{self.app_name}/applicaton.db") 
-applciation_db     =  []
+applciation_db: list[application_rec]  =  []
