@@ -145,17 +145,18 @@ async def startup_shutdown(app: FastAPI):
 
     #Init Databases
     workspace_db.initialize()
-
-    server_mem                   = get_server_mem()
-    await asyncio.sleep(0.2)
+    server_mem = get_server_mem()
 
     print(f'Server Status: {server_mem[STATUS_MEM_ADDR]}, Worker Started')
 
     await auth_no_users_fix() #if there is no user - create admin/admin
     user_cache = await cached_auth()
 
+    await application_db_initialize()
+
     yield   #Before This - Startup, After - Shutdown
     
+    await application_db_termiante()
     workspace_db.terminate()
 
 
@@ -292,11 +293,11 @@ async def system_tools(request: Request, req_json: request_jsn ): #, request: Re
 
 
 def main():
-    print("Initializing APDIO EDGE...")
+    print("Initializing APDIO EDGE...\n")
 
     if __debug__: 
         print("DEBUG is ON. Run with -O or -OO to turn off debug")
-        print("!!!!! THIS VERSION NOT FOR DISTRIBUTION !!!!!")        
+        print("!!!!! THIS VERSION NOT FOR DISTRIBUTION !!!!!\n")        
     
     print(f"Global ROOT Folder:      {ROOT_FOLDER}"    )
     print(f"Global WORKSPACE Folder: {WORKSPACE}\n"    )

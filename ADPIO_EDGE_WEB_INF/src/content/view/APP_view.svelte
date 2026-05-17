@@ -114,7 +114,8 @@
                         write_dp_modal.open(120, 120) 
                 }}"
             >
-                <div class="tile-basic-name">{el.name}</div>
+                <div class="tile-basic-group">{el.datapoint.group}</div>
+                <div class="tile-basic-name">{el.datapoint.name}</div>
                 {#if el.error}
                     <div class="tile-basic-value">...</div>
                 {:else}

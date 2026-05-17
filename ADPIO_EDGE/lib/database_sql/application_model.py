@@ -147,7 +147,7 @@ def find_application_db(app_name, db_auto_init = True):
         new_app_db = engine_db(f"sqlite:///{APPS_FOLDER}/{app_name}/application.db", application_model, name=app_name)
         new_app_db.initialize(create_model=False)
         applciation_db.append(new_app_db)
-                
+
         return new_app_db
     
     return None
